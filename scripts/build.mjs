@@ -2,15 +2,17 @@ import * as esbuild from 'esbuild'
 import path from 'node:path'
 import fs from 'node:fs'
 
+const prod = process.argv.includes("--prod");
+
 const outdir = 'dist';
 const opts = {
     entryPoints: ['src/index.ts'],
     entryNames: '[name]-[hash]',
-    minify: true,
+    minify: prod,
     bundle: true,
     sourcemap: true,
     metafile: true,
-    target: ['chrome58', 'firefox57', 'safari11', 'edge16'],
+    target: ['chrome58', 'firefox57', 'safari11', 'edge18'],
     outdir: outdir,
     plugins: [{
         name: 'bundleHTML',
@@ -33,7 +35,7 @@ const opts = {
     }],
 };
 
-if (process.argv[2] == "serve") {
+if (process.argv.includes("--serve")) {
     const ctx = await esbuild.context(opts);
     const { port } = await ctx.serve({
         servedir: outdir,

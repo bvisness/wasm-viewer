@@ -16,10 +16,6 @@ module.exports = {
     "quotes": ["error", "double"],
     "no-irregular-whitespace": "off",
 
-    // 🤡
-    "no-constant-condition": "off",
-    "@typescript-eslint/no-unnecessary-condition": ["warn", { "allowConstantLoopConditions": true }],
-
     "@typescript-eslint/prefer-literal-enum-member": "off",
     "@typescript-eslint/no-unused-vars": ["warn", {
       "varsIgnorePattern": "^_",
@@ -31,6 +27,13 @@ module.exports = {
 
     "@typescript-eslint/member-delimiter-style": "error",
 
-    "@typescript-eslint/no-explicit-any": "off", // 🤡
+    // you have now entered 🤡 Clown Town 🤡
+
+    // while (true) is evil 🤡
+    "no-constant-condition": "off",
+    "@typescript-eslint/no-unnecessary-condition": ["warn", { "allowConstantLoopConditions": true }],
+
+    "@typescript-eslint/no-explicit-any": "off", // any is always evil, even when you are explicit 🤡
+    "@typescript-eslint/no-misused-promises": "off", // async functions in addEventListener are evil 🤡
   },
 };
