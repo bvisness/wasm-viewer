@@ -47,9 +47,7 @@ export async function parse(stream: ReadableStream<Uint8Array>): Promise<Module>
                 console.log("Getting this many bytes:", sectionSize);
                 const memOffset = reader.cursor;
                 const memBytes = await reader.getNBytes(sectionSize);
-                console.log({ memBytes });
                 const mems = parse_memory_section(memBytes, memOffset);
-                console.log({ mems });
 
                 sections.push({
                     type: "Memory",

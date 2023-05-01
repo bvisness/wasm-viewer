@@ -1,6 +1,6 @@
 import { parse } from "./parse";
 import wasmUrl from "../wasm-tools/pkg/wasm_viewer_bg.wasm";
-import wasmInit from "../wasm-tools/pkg";
+import wasmInit, { BinaryError } from "../wasm-tools/pkg";
 
 async function init() {
     const url = wasmUrl as unknown as string;
@@ -58,11 +58,15 @@ doButton.addEventListener("click", async () => {
                 } break;
                 case "Memory": {
                     for (const mem of section.mems) {
-                        const initialStr = `${mem.initial} pages`;
-                        const maxStr = mem.maximum !== undefined ? `, max ${mem.maximum} pages` : "";
-                        const bitStr = mem.memory64 ? ", 64-bit" : ", 32-bit";
-                        const sharedStr = mem.shared ? ", shared" : ", not shared";
-                        sectionEl.appendChild(p(`Memory: ${initialStr}${maxStr}${bitStr}${sharedStr}`));
+                        if (mem.is_error) {
+                            sectionEl.appendChild(p(`ERROR (offset ${mem.offset}): ${mem.message}`));
+                        } else {
+                            const initialStr = `${mem.initial} pages`;
+                            const maxStr = mem.maximum !== undefined ? `, max ${mem.maximum} pages` : "";
+                            const bitStr = mem.memory64 ? ", 64-bit" : ", 32-bit";
+                            const sharedStr = mem.shared ? ", shared" : ", not shared";
+                            sectionEl.appendChild(p(`Memory: ${initialStr}${maxStr}${bitStr}${sharedStr}`));
+                        }
                     }
                 } break;
                 case "Code": {

@@ -1,4 +1,4 @@
-import type { MemoryType } from "../wasm-tools/pkg/wasm_viewer";
+import type { MemoryType, BinaryError } from "../wasm-tools/pkg/wasm_viewer";
 
 export interface FuncInfo {
     size: number;
@@ -11,7 +11,7 @@ export interface CustomSection {
 
 export interface MemorySection {
     type: "Memory";
-    mems: MemoryType[];
+    mems: Array<MemoryType | BinaryError>;
 }
 
 export interface CodeSection {

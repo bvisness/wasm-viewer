@@ -10,6 +10,7 @@ crate-type = ["cdylib"]
 js-sys = "0.3.61"
 wasm-bindgen = "0.2.84"
 wasmparser = "0.104.0"
+macros = {path = "macros"}
 
 [package.metadata.wasm-pack.profile.release]
 wasm-opt = false

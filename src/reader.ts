@@ -74,7 +74,6 @@ export class WasmReader {
         while (true) {
             const advanceThisChunk = Math.min(this.chunk.length - this.cursor, n);
             const sourceBytes = this.chunk.subarray(this.cursor, this.cursor + advanceThisChunk);
-            console.log({ sourceBytes });
             res.set(sourceBytes, i);
             this.cursor += advanceThisChunk;
             i += advanceThisChunk;
