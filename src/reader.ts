@@ -67,4 +67,29 @@ export class WasmReader {
             break;
         }
     }
+
+    async getNBytes(n: number): Promise<Uint8Array> {
+        let i = 0;
+        const res = new Uint8Array(n);
+        while (true) {
+            const advanceThisChunk = Math.min(this.chunk.length - this.cursor, n);
+            const sourceBytes = this.chunk.subarray(this.cursor, this.cursor + advanceThisChunk);
+            console.log({ sourceBytes });
+            res.set(sourceBytes, i);
+            this.cursor += advanceThisChunk;
+            i += advanceThisChunk;
+            n -= advanceThisChunk;
+            if (n > 0) {
+                // There are still bytes to advance by. Get another chunk.
+                const done = await this.getChunk();
+                if (done) {
+                    throw new Error(`tried to advance by ${n} bytes, but ran out of data`);
+                }
+                this.cursor = 0;
+                continue;
+            }
+            break;
+        }
+        return res;
+    }
 }

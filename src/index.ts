@@ -1,4 +1,12 @@
 import { parse } from "./parse";
+import wasmUrl from "../wasm-tools/pkg/wasm_viewer_bg.wasm";
+import wasmInit, { greet } from "../wasm-tools/pkg";
+
+async function init() {
+    const url = wasmUrl as unknown as string;
+    await wasmInit(fetch(url));
+}
+init();
 
 function el(id: string): HTMLElement {
     const element = document.getElementById(id);
@@ -47,6 +55,15 @@ doButton.addEventListener("click", async () => {
             switch (section.type) {
                 case "Custom": {
                     sectionEl.appendChild(p(`Size: ${section.size} bytes`));
+                } break;
+                case "Memory": {
+                    for (const mem of section.mems) {
+                        const initialStr = `${mem.initial} pages`;
+                        const maxStr = mem.maximum !== undefined ? `, max ${mem.maximum} pages` : "";
+                        const bitStr = mem.memory64 ? ", 64-bit" : ", 32-bit";
+                        const sharedStr = mem.shared ? ", shared" : ", not shared";
+                        sectionEl.appendChild(p(`Memory: ${initialStr}${maxStr}${bitStr}${sharedStr}`));
+                    }
                 } break;
                 case "Code": {
                     sectionEl.appendChild(p(`Number of functions: ${section.funcs.length}`));
