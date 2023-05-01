@@ -4,16 +4,6 @@ use js_sys::{Array};
 
 #[wasm_bindgen]
 extern "C" {
-  fn alert(s: &str);
-}
-
-#[wasm_bindgen]
-pub fn greet(name: &str) {
-  alert(&format!("Hello, {}!", name));
-}
-
-#[wasm_bindgen]
-extern "C" {
   #[wasm_bindgen(typescript_type = "Array<MemoryType>")]
   pub type MemoryTypeArray;
 }

@@ -2,6 +2,7 @@
   "scripts": {
     "build": "node scripts/build.mjs",
     "serve": "node scripts/build.mjs --serve",
+    "build-rust": "cd wasm-tools && wasm-pack build --target web",
     "check": "tsc",
     "watch": "tsc --watch",
     "lint": "eslint ."

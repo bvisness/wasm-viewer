@@ -1,6 +1,6 @@
 import { parse } from "./parse";
 import wasmUrl from "../wasm-tools/pkg/wasm_viewer_bg.wasm";
-import wasmInit, { greet } from "../wasm-tools/pkg";
+import wasmInit from "../wasm-tools/pkg";
 
 async function init() {
     const url = wasmUrl as unknown as string;
