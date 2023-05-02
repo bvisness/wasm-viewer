@@ -1,7 +1,7 @@
 import { parse } from "./parse";
 import wasmUrl from "../wasm-tools/pkg/wasm_viewer_bg.wasm";
 import wasmInit, { BinaryError } from "../wasm-tools/pkg";
-import { valTypeToString } from "./types";
+import { refTypeToString, valTypeToString } from "./types";
 
 async function init() {
     const url = wasmUrl as unknown as string;
@@ -110,6 +110,21 @@ doButton.addEventListener("click", async () => {
                             sectionEl.appendChild(p(`ERROR (offset ${func.offset}): ${func.message}`));
                         } else {
                             sectionEl.appendChild(p(`Func ${i}: type ${func.type_idx}`));
+                        }
+                    }
+                } break;
+                case "Table": {
+                    for (const [i, table] of section.tables.entries()) {
+                        if (table.is_error) {
+                            sectionEl.appendChild(p(`ERROR (offset ${table.offset}): ${table.message}`));
+                        } else {
+                            const parts = [];
+                            parts.push(`of ${refTypeToString(table.ty.element_type)}`);
+                            parts.push(`${table.ty.initial} elements`);
+                            if (table.ty.maximum) {
+                                parts.push(`up to ${table.ty.maximum} elements`);
+                            }
+                            sectionEl.appendChild(p(`Table ${i}: ${parts.join(", ")}`));
                         }
                     }
                 } break;

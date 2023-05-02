@@ -4,9 +4,10 @@ use wasm_bindgen::prelude::*;
 use wasmparser::{
     BinaryReaderError, ConstExpr as ParserConstExpr, FuncType as ParserFuncType,
     Global as ParserGlobal, GlobalType as ParserGlobalType, Import as ParserImport,
-    MemoryType as ParserMemoryType, RefType as ParserRefType, TableType as ParserTableType,
-    TagKind as ParserTagKind, TagType as ParserTagType, Type as ParserType,
-    TypeRef as ParserTypeRef, ValType as ParserValType,
+    MemoryType as ParserMemoryType, RefType as ParserRefType, Table as ParserTable,
+    TableInit as ParserTableInit, TableType as ParserTableType, TagKind as ParserTagKind,
+    TagType as ParserTagType, Type as ParserType, TypeRef as ParserTypeRef,
+    ValType as ParserValType,
 };
 
 #[wasm_bindgen(getter_with_clone)]
@@ -270,6 +271,50 @@ impl From<ParserTagType> for TagType {
 #[wasmtools_struct]
 pub struct Function {
     pub type_idx: u32,
+}
+
+/// Different modes of initializing a table.
+#[wasmtools_enum]
+pub enum TableInit {
+    /// The table is initialized to all null elements.
+    ref_null,
+    /// Each element in the table is initialized with the specified constant
+    /// expression.
+    expr(ConstExpr),
+}
+
+impl From<ParserTableInit<'_>> for TableInit {
+    fn from(value: ParserTableInit) -> Self {
+        match value {
+            ParserTableInit::Expr(expr) => TableInit {
+                kind: "expr".to_string(),
+                expr: Some(expr.into()), // TODO
+            },
+            ParserTableInit::RefNull => TableInit {
+                kind: "ref_null".to_string(),
+                expr: None,
+            },
+        }
+    }
+}
+
+/// Type information about a table defined in the table section of a WebAssembly
+/// module.
+#[wasmtools_struct]
+pub struct Table {
+    /// The type of this table, including its element type and its limits.
+    pub ty: TableType,
+    /// The initialization expression for the table.
+    pub init: TableInit,
+}
+
+impl From<ParserTable<'_>> for Table {
+    fn from(value: ParserTable) -> Self {
+        Table {
+            ty: value.ty.into(),
+            init: value.init.into(),
+        }
+    }
 }
 
 /// Represents a memory's type.

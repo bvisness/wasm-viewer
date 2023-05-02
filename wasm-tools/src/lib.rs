@@ -2,7 +2,7 @@ use types::*;
 use wasm_bindgen::prelude::*;
 use wasmparser::{
     FunctionSectionReader, GlobalSectionReader, ImportSectionReader, MemorySectionReader,
-    TypeSectionReader,
+    TableSectionReader, TypeSectionReader,
 };
 
 mod types;
@@ -46,6 +46,19 @@ pub fn parse_function_section(
             Err(err) => FunctionResult::Err(err.into()),
         })
         .collect::<Vec<FunctionResult>>();
+    Ok(imports.into())
+}
+
+#[wasm_bindgen]
+pub fn parse_table_section(data: &[u8], offset: usize) -> Result<TableResultArray, BinaryError> {
+    let reader = TableSectionReader::new(data, offset)?;
+    let imports = reader
+        .into_iter()
+        .map(|f| match f {
+            Ok(t) => TableResult::Ok(t.into()),
+            Err(err) => TableResult::Err(err.into()),
+        })
+        .collect::<Vec<TableResult>>();
     Ok(imports.into())
 }
 
