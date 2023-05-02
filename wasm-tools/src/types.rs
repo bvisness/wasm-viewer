@@ -1,10 +1,12 @@
 use js_sys::Array;
-use macros::wasmtools_struct;
+use macros::*;
 use wasm_bindgen::prelude::*;
 use wasmparser::{
     BinaryReaderError, ConstExpr as ParserConstExpr, FuncType as ParserFuncType,
-    Global as ParserGlobal, GlobalType as ParserGlobalType, MemoryType as ParserMemoryType,
-    RefType as ParserRefType, Type as ParserType, ValType as ParserValType,
+    Global as ParserGlobal, GlobalType as ParserGlobalType, Import as ParserImport,
+    MemoryType as ParserMemoryType, RefType as ParserRefType, TableType as ParserTableType,
+    TagKind as ParserTagKind, TagType as ParserTagType, Type as ParserType,
+    TypeRef as ParserTypeRef, ValType as ParserValType,
 };
 
 #[wasm_bindgen(getter_with_clone)]
@@ -75,12 +77,14 @@ impl From<ParserRefType> for RefType {
 }
 
 /// Represents the types of values in a WebAssembly module.
-#[wasmtools_struct]
-pub struct ValType {
-    /// "i32", "i64", "f32", "f64", "v128", or "ref"
-    pub kind: String,
-    /// If kind == "ref", the reference type
-    pub ref_type: Option<RefType>,
+#[wasmtools_enum]
+pub enum ValType {
+    i32,
+    i64,
+    f32,
+    f64,
+    v128,
+    ref_type(RefType),
 }
 
 impl From<ParserValType> for ValType {
@@ -125,12 +129,9 @@ impl From<ParserFuncType> for FuncType {
 }
 
 /// Represents a type in a WebAssembly module.
-#[wasmtools_struct]
-pub struct Type {
-    /// Only "func" for now, but this will change with GC stuff
-    pub kind: String,
-    /// The actual type if kind == "func"
-    pub func_type: Option<FuncType>,
+#[wasmtools_enum]
+pub enum Type {
+    func(FuncType),
 }
 
 impl From<ParserType> for Type {
@@ -140,9 +141,128 @@ impl From<ParserType> for Type {
                 ParserType::Func(_) => "func",
             }
             .to_string(),
-            func_type: match value {
+            func: match value {
                 ParserType::Func(ft) => Some(ft.into()),
             },
+        }
+    }
+}
+
+/// Represents a reference to a type definition in a WebAssembly module.
+#[wasmtools_enum]
+pub enum TypeRef {
+    func(u32),
+    table(TableType),
+    memory(MemoryType),
+    global(GlobalType),
+    tag(TagType),
+}
+
+impl From<ParserTypeRef> for TypeRef {
+    fn from(value: ParserTypeRef) -> Self {
+        match value {
+            ParserTypeRef::Func(f) => TypeRef {
+                kind: "func".to_string(),
+                func: Some(f),
+                ..Default::default()
+            },
+            ParserTypeRef::Table(t) => TypeRef {
+                kind: "table".to_string(),
+                table: Some(t.into()),
+                ..Default::default()
+            },
+            ParserTypeRef::Global(g) => TypeRef {
+                kind: "global".to_string(),
+                global: Some(g.into()),
+                ..Default::default()
+            },
+            ParserTypeRef::Memory(m) => TypeRef {
+                kind: "memory".to_string(),
+                memory: Some(m.into()),
+                ..Default::default()
+            },
+            ParserTypeRef::Tag(t) => TypeRef {
+                kind: "tag".to_string(),
+                tag: Some(t.into()),
+                ..Default::default()
+            },
+        }
+    }
+}
+
+/// Represents an import in a WebAssembly module.
+#[wasmtools_struct]
+pub struct Import {
+    /// The module being imported from.
+    pub module: String,
+    /// The name of the imported item.
+    pub name: String,
+    /// The type of the imported item.
+    pub ty: TypeRef,
+}
+
+impl From<ParserImport<'_>> for Import {
+    fn from(value: ParserImport) -> Self {
+        Import {
+            module: value.module.to_string(),
+            name: value.name.to_string(),
+            ty: value.ty.into(),
+        }
+    }
+}
+
+/// Represents a table's type.
+#[wasmtools_struct]
+pub struct TableType {
+    /// The table's element type.
+    pub element_type: RefType,
+    /// Initial size of this table, in elements.
+    pub initial: u32,
+    /// Optional maximum size of the table, in elements.
+    pub maximum: Option<u32>,
+}
+
+impl From<ParserTableType> for TableType {
+    fn from(value: ParserTableType) -> Self {
+        TableType {
+            element_type: value.element_type.into(),
+            initial: value.initial,
+            maximum: value.maximum,
+        }
+    }
+}
+
+/// Represents a tag kind.
+#[wasmtools_enum]
+pub enum TagKind {
+    /// The tag is an exception type.
+    exception,
+}
+
+impl From<ParserTagKind> for TagKind {
+    fn from(value: ParserTagKind) -> Self {
+        match value {
+            ParserTagKind::Exception => TagKind {
+                kind: "exception".to_string(),
+            },
+        }
+    }
+}
+
+/// A tag's type.
+#[wasmtools_struct]
+pub struct TagType {
+    /// The kind of tag
+    pub kind: TagKind,
+    /// The function type this tag uses.
+    pub func_type_idx: u32,
+}
+
+impl From<ParserTagType> for TagType {
+    fn from(value: ParserTagType) -> Self {
+        TagType {
+            kind: value.kind.into(),
+            func_type_idx: value.func_type_idx,
         }
     }
 }

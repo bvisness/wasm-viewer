@@ -66,13 +66,41 @@ doButton.addEventListener("click", async () => {
                             const parts = [];
                             parts.push(type.kind);
                             if (type.kind === "func") {
-                                const funcType = type.func_type!;
+                                const funcType = type.func!;
                                 for (const [i, vt] of funcType.params_results.entries()) {
                                     const kind = i >= funcType.len_params ? "result" : "param";
                                     parts.push(`${kind} ${valTypeToString(vt)}`);
                                 }
                             }
                             sectionEl.appendChild(p(`Type ${i}: ${parts.join(", ")}`));
+                        }
+                    }
+                } break;
+                case "Import": {
+                    for (const [i, imp] of section.imports.entries()) {
+                        if (imp.is_error) {
+                            sectionEl.appendChild(p(`ERROR (offset ${imp.offset}): ${imp.message}`));
+                        } else {
+                            const parts = [];
+                            switch (imp.ty.kind) {
+                                case "func": {
+                                    parts.push(`func of type ${imp.ty.func}`);
+                                } break;
+                                case "global": {
+                                    const mut = imp.ty.global.mutable ? "mutable " : "";
+                                    parts.push(`global ${mut}${valTypeToString(imp.ty.global.content_type)}`);
+                                } break;
+                                case "memory": {
+                                    parts.push("some memory"); // TODO
+                                } break;
+                                case "table": {
+                                    parts.push("some table"); // TODO
+                                } break;
+                                case "tag": {
+                                    parts.push("some tag"); // TODO
+                                } break;
+                            }
+                            sectionEl.appendChild(p(`"${imp.module}" "${imp.name}": ${parts.join(", ")}`));
                         }
                     }
                 } break;
@@ -96,7 +124,7 @@ doButton.addEventListener("click", async () => {
                         } else {
                             const parts = [];
                             parts.push(global.ty.content_type.kind);
-                            if (global.ty.content_type.kind === "ref") {
+                            if (global.ty.content_type.kind === "ref_type") {
                                 const refType = global.ty.content_type.ref_type!;
                                 if (refType.nullable) {
                                     parts.push("nullable");

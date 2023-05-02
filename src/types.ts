@@ -1,4 +1,4 @@
-import type { Type, MemoryType, Global, BinaryError, ValType, RefType } from "../wasm-tools/pkg/wasm_viewer";
+import type { Type, MemoryType, Global, BinaryError, ValType, RefType, Import } from "../wasm-tools/pkg/wasm_viewer";
 
 export interface FuncInfo {
     size: number;
@@ -12,6 +12,11 @@ export interface CustomSection {
 export interface TypeSection {
     type: "Type";
     types: Array<Type | BinaryError>;
+}
+
+export interface ImportSection {
+    type: "Import";
+    imports: Array<Import | BinaryError>;
 }
 
 export interface MemorySection {
@@ -29,7 +34,13 @@ export interface CodeSection {
     funcs: FuncInfo[];
 }
 
-export type Section = CustomSection | TypeSection | MemorySection | GlobalSection | CodeSection;
+export type Section =
+    CustomSection
+    | TypeSection
+    | ImportSection
+    | MemorySection
+    | GlobalSection
+    | CodeSection;
 
 export interface Module {
     sections: Section[];
@@ -37,7 +48,7 @@ export interface Module {
 
 export function valTypeToString(t: ValType): string {
     switch (t.kind) {
-        case "ref": return refTypeToString(t.ref_type!);
+        case "ref_type": return refTypeToString(t.ref_type!);
         default: return t.kind;
     }
 }

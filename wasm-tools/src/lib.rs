@@ -1,20 +1,35 @@
 use types::*;
 use wasm_bindgen::prelude::*;
-use wasmparser::{GlobalSectionReader, MemorySectionReader, TypeSectionReader};
+use wasmparser::{
+    GlobalSectionReader, ImportSectionReader, MemorySectionReader, TypeSectionReader,
+};
 
 mod types;
 
 #[wasm_bindgen]
 pub fn parse_type_section(data: &[u8], offset: usize) -> Result<TypeResultArray, BinaryError> {
     let reader = TypeSectionReader::new(data, offset)?;
-    let mems = reader
+    let types = reader
         .into_iter()
         .map(|t| match t {
             Ok(ty) => TypeResult::Ok(ty.into()),
             Err(err) => TypeResult::Err(err.into()),
         })
         .collect::<Vec<TypeResult>>();
-    Ok(mems.into())
+    Ok(types.into())
+}
+
+#[wasm_bindgen]
+pub fn parse_import_section(data: &[u8], offset: usize) -> Result<ImportResultArray, BinaryError> {
+    let reader = ImportSectionReader::new(data, offset)?;
+    let imports = reader
+        .into_iter()
+        .map(|t| match t {
+            Ok(i) => ImportResult::Ok(i.into()),
+            Err(err) => ImportResult::Err(err.into()),
+        })
+        .collect::<Vec<ImportResult>>();
+    Ok(imports.into())
 }
 
 #[wasm_bindgen]
@@ -36,12 +51,12 @@ pub fn parse_memory_section(
 #[wasm_bindgen]
 pub fn parse_global_section(data: &[u8], offset: usize) -> Result<GlobalResultArray, BinaryError> {
     let reader = GlobalSectionReader::new(data, offset)?;
-    let mems = reader
+    let globals = reader
         .into_iter()
-        .map(|m| match m {
+        .map(|g| match g {
             Ok(global) => GlobalResult::Ok(global.into()),
             Err(err) => GlobalResult::Err(err.into()),
         })
         .collect::<Vec<GlobalResult>>();
-    Ok(mems.into())
+    Ok(globals.into())
 }
