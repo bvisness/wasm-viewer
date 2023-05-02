@@ -1,7 +1,7 @@
 import { readVarU } from "./leb128";
 import { WasmReader } from "./reader";
 import { FuncInfo, Module, Section } from "./types";
-import { parse_global_section, parse_memory_section } from "../wasm-tools/pkg/wasm_viewer";
+import { parse_global_section, parse_memory_section, parse_type_section } from "../wasm-tools/pkg/wasm_viewer";
 
 export async function parse(stream: ReadableStream<Uint8Array>): Promise<Module> {
     const reader = new WasmReader(stream);
@@ -39,6 +39,19 @@ export async function parse(stream: ReadableStream<Uint8Array>): Promise<Module>
                 sections.push({
                     type: "Custom",
                     size: sectionSize,
+                });
+            } break;
+            case 1: {
+                // Type section
+                console.log("Type section");
+                console.log("Getting this many bytes:", sectionSize);
+                const offset = reader.cursor;
+                const bytes = await reader.getNBytes(sectionSize);
+                const types = parse_type_section(bytes, offset);
+
+                sections.push({
+                    type: "Type",
+                    types: types,
                 });
             } break;
             case 5: {

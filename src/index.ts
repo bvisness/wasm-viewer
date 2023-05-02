@@ -1,6 +1,7 @@
 import { parse } from "./parse";
 import wasmUrl from "../wasm-tools/pkg/wasm_viewer_bg.wasm";
 import wasmInit, { BinaryError } from "../wasm-tools/pkg";
+import { valTypeToString } from "./types";
 
 async function init() {
     const url = wasmUrl as unknown as string;
@@ -56,6 +57,24 @@ doButton.addEventListener("click", async () => {
             switch (section.type) {
                 case "Custom": {
                     sectionEl.appendChild(p(`Size: ${section.size} bytes`));
+                } break;
+                case "Type": {
+                    for (const [i, type] of section.types.entries()) {
+                        if (type.is_error) {
+                            sectionEl.appendChild(p(`ERROR (offset ${type.offset}): ${type.message}`));
+                        } else {
+                            const parts = [];
+                            parts.push(type.kind);
+                            if (type.kind === "func") {
+                                const funcType = type.func_type!;
+                                for (const [i, vt] of funcType.params_results.entries()) {
+                                    const kind = i >= funcType.len_params ? "result" : "param";
+                                    parts.push(`${kind} ${valTypeToString(vt)}`);
+                                }
+                            }
+                            sectionEl.appendChild(p(`Type ${i}: ${parts.join(", ")}`));
+                        }
+                    }
                 } break;
                 case "Memory": {
                     for (const mem of section.mems) {

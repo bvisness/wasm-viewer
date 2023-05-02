@@ -2,9 +2,9 @@ use js_sys::Array;
 use macros::wasmtools_struct;
 use wasm_bindgen::prelude::*;
 use wasmparser::{
-    BinaryReaderError, ConstExpr as ParserConstExpr, Global as ParserGlobal,
-    GlobalType as ParserGlobalType, MemoryType as ParserMemoryType, RefType as ParserRefType,
-    ValType as ParserValType,
+    BinaryReaderError, ConstExpr as ParserConstExpr, FuncType as ParserFuncType,
+    Global as ParserGlobal, GlobalType as ParserGlobalType, MemoryType as ParserMemoryType,
+    RefType as ParserRefType, Type as ParserType, ValType as ParserValType,
 };
 
 #[wasm_bindgen(getter_with_clone)]
@@ -40,6 +40,112 @@ impl From<BinaryReaderError> for BinaryError {
 // Stuff in here is copy-pasted from wasm-tools and set up with macros to
 // alleviate the enormous amount of repetition it takes to send these types
 // to JS.
+
+/// A reference type.
+///
+/// The reference types proposal first introduced `externref` and `funcref`.
+///
+/// The function refererences proposal introduced typed function references.
+#[derive(Debug, Clone)]
+#[wasm_bindgen(getter_with_clone)]
+pub struct RefType {
+    /// "type", "func", or "extern"
+    pub kind: String,
+    pub nullable: bool,
+    /// If kind is "type", the index of the type being referenced
+    pub type_index: Option<u32>,
+}
+
+impl From<ParserRefType> for RefType {
+    fn from(value: ParserRefType) -> Self {
+        RefType {
+            kind: match value.heap_type() {
+                wasmparser::HeapType::Extern => "extern",
+                wasmparser::HeapType::Func => "func",
+                wasmparser::HeapType::TypedFunc(_) => "type",
+            }
+            .to_string(),
+            nullable: value.is_nullable(),
+            type_index: match value.heap_type() {
+                wasmparser::HeapType::TypedFunc(idx) => Some(idx),
+                _ => None,
+            },
+        }
+    }
+}
+
+/// Represents the types of values in a WebAssembly module.
+#[wasmtools_struct]
+pub struct ValType {
+    /// "i32", "i64", "f32", "f64", "v128", or "ref"
+    pub kind: String,
+    /// If kind == "ref", the reference type
+    pub ref_type: Option<RefType>,
+}
+
+impl From<ParserValType> for ValType {
+    fn from(value: ParserValType) -> Self {
+        ValType {
+            kind: match value {
+                ParserValType::I32 => "i32",
+                ParserValType::I64 => "i64",
+                ParserValType::F32 => "f32",
+                ParserValType::F64 => "f64",
+                ParserValType::V128 => "v128",
+                ParserValType::Ref(_) => "ref",
+            }
+            .to_string(),
+            ref_type: match value {
+                ParserValType::Ref(rt) => Some(rt.into()),
+                _ => None,
+            },
+        }
+    }
+}
+
+/// Represents a type of a function in a WebAssembly module.
+#[derive(Debug, Clone)]
+#[wasm_bindgen(getter_with_clone)]
+pub struct FuncType {
+    /// The combined parameters and result types.
+    pub params_results: ValTypeArray,
+    /// The number of parameter types.
+    pub len_params: usize,
+}
+
+impl From<ParserFuncType> for FuncType {
+    fn from(value: ParserFuncType) -> Self {
+        let params_results = value.params().iter().chain(value.results().iter());
+        let params_results: Vec<ValType> = params_results.map(|vt| (*vt).into()).collect();
+        FuncType {
+            params_results: params_results.into(),
+            len_params: value.params().len(),
+        }
+    }
+}
+
+/// Represents a type in a WebAssembly module.
+#[wasmtools_struct]
+pub struct Type {
+    /// Only "func" for now, but this will change with GC stuff
+    pub kind: String,
+    /// The actual type if kind == "func"
+    pub func_type: Option<FuncType>,
+}
+
+impl From<ParserType> for Type {
+    fn from(value: ParserType) -> Self {
+        Type {
+            kind: match value {
+                ParserType::Func(_) => "func",
+            }
+            .to_string(),
+            func_type: match value {
+                ParserType::Func(ft) => Some(ft.into()),
+            },
+        }
+    }
+}
 
 /// Represents a memory's type.
 #[wasmtools_struct]
@@ -78,69 +184,6 @@ impl From<ParserMemoryType> for MemoryType {
             shared: value.shared,
             initial: value.initial,
             maximum: value.maximum,
-        }
-    }
-}
-
-/// A reference type.
-///
-/// The reference types proposal first introduced `externref` and `funcref`.
-///
-/// The function refererences proposal introduced typed function references.
-#[derive(Debug, Clone)]
-#[wasm_bindgen(getter_with_clone)]
-pub struct RefType {
-    /// "type", "func", or "extern"
-    pub kind: String,
-    pub nullable: bool,
-    /// If kind is "type", the index of the type being referenced
-    pub type_index: Option<u32>,
-}
-
-impl From<ParserRefType> for RefType {
-    fn from(value: ParserRefType) -> Self {
-        RefType {
-            kind: match value.heap_type() {
-                wasmparser::HeapType::Extern => "extern",
-                wasmparser::HeapType::Func => "func",
-                wasmparser::HeapType::TypedFunc(_) => "type",
-            }
-            .to_string(),
-            nullable: value.is_nullable(),
-            type_index: match value.heap_type() {
-                wasmparser::HeapType::TypedFunc(idx) => Some(idx),
-                _ => None,
-            },
-        }
-    }
-}
-
-/// Represents the types of values in a WebAssembly module.
-#[derive(Debug, Clone)]
-#[wasm_bindgen(getter_with_clone)]
-pub struct ValType {
-    /// "i32", "i64", "f32", "f64", "v128", or "ref"
-    pub kind: String,
-    /// If kind == "ref", the reference type
-    pub ref_type: Option<RefType>,
-}
-
-impl From<ParserValType> for ValType {
-    fn from(value: ParserValType) -> Self {
-        ValType {
-            kind: match value {
-                ParserValType::I32 => "i32",
-                ParserValType::I64 => "i64",
-                ParserValType::F32 => "f32",
-                ParserValType::F64 => "f64",
-                ParserValType::V128 => "v128",
-                ParserValType::Ref(_) => "ref",
-            }
-            .to_string(),
-            ref_type: match value {
-                ParserValType::Ref(rt) => Some(rt.into()),
-                _ => None,
-            },
         }
     }
 }
