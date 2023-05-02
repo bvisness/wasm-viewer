@@ -44,6 +44,7 @@ doButton.addEventListener("click", async () => {
     const wasmFile = filePicker.files[0];
     const module = await parse(wasmFile.stream());
 
+    sections.innerHTML = "";
     for (const section of module.sections) {
         const sectionEl = document.createElement("div");
         sectionEl.classList.add("section");
@@ -66,6 +67,30 @@ doButton.addEventListener("click", async () => {
                             const bitStr = mem.memory64 ? ", 64-bit" : ", 32-bit";
                             const sharedStr = mem.shared ? ", shared" : ", not shared";
                             sectionEl.appendChild(p(`Memory: ${initialStr}${maxStr}${bitStr}${sharedStr}`));
+                        }
+                    }
+                } break;
+                case "Global": {
+                    for (const [i, global] of section.globals.entries()) {
+                        if (global.is_error) {
+                            sectionEl.appendChild(p(`ERROR (offset ${global.offset}): ${global.message}`));
+                        } else {
+                            const parts = [];
+                            parts.push(global.ty.content_type.kind);
+                            if (global.ty.content_type.kind === "ref") {
+                                const refType = global.ty.content_type.ref_type!;
+                                if (refType.nullable) {
+                                    parts.push("nullable");
+                                }
+                                parts.push(refType.kind);
+                                if (refType.kind === "type") {
+                                    parts.push(`type ${refType.type_index}`);
+                                }
+                            }
+                            if (global.ty.mutable) {
+                                parts.push("mutable");
+                            }
+                            sectionEl.appendChild(p(`Global ${i}: ${parts.join(", ")}`));
                         }
                     }
                 } break;

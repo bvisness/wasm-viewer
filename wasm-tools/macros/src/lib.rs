@@ -1,36 +1,13 @@
-use syn::{parse_macro_input, DeriveInput, Data::*};
+use syn::{parse_macro_input, DeriveInput};
 use quote::{quote, format_ident};
 use proc_macro::TokenStream;
 
 #[proc_macro_attribute]
-pub fn wasmtools_struct(attr: TokenStream, input: TokenStream) -> TokenStream {
+pub fn wasmtools_struct(_: TokenStream, input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
-
     let name = &input.ident;
-    let parser_name = format_ident!("{}", attr.to_string());
-    let data = if let Struct(data) = &input.data {
-        data
-    } else {
-        panic!("wasm_struct only works with structs")
-    };
 
-    // wasm-tools data -> our wasm-bindgen'd data
-    let mut fields = quote! {};
-    fields.extend(data.fields.iter().map(|f| {
-        let name = &f.ident;
-        quote! {
-            #name: value.#name,
-        }
-    }));
-    let impl_from = quote! {
-        impl From<#parser_name> for #name {
-            fn from(value: #parser_name) -> Self {
-                Self {
-                    #fields
-                }
-            }
-        }
-    };
+    // error definition on the type (to enable discriminated union in typescript)
     let impl_error = quote! {
         #[wasm_bindgen]
         impl #name {
@@ -47,7 +24,7 @@ export interface {} {{
 "#, name);
     let impl_error_ts = quote! {
         #[wasm_bindgen(typescript_custom_section)]
-        const TS_APPEND_CONTENT: &'static str = #impl_error_ts_def;
+        const _: &'static str = #impl_error_ts_def;
     };
 
     // result type to encapsulate value + error + offset
@@ -83,13 +60,12 @@ export interface {} {{
     };
 
     let output = quote! {
-        #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-        #[wasm_bindgen]
+        #[derive(Debug, Clone)]
+        #[wasm_bindgen(getter_with_clone)]
         #input
         #impl_error
         #impl_error_ts
         #result_type
-        #impl_from
         #ts_array
         #impl_from_array
     };
