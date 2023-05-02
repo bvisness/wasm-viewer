@@ -104,6 +104,15 @@ doButton.addEventListener("click", async () => {
                         }
                     }
                 } break;
+                case "Function": {
+                    for (const [i, func] of section.functions.entries()) {
+                        if (func.is_error) {
+                            sectionEl.appendChild(p(`ERROR (offset ${func.offset}): ${func.message}`));
+                        } else {
+                            sectionEl.appendChild(p(`Func ${i}: type ${func.type_idx}`));
+                        }
+                    }
+                } break;
                 case "Memory": {
                     for (const mem of section.mems) {
                         if (mem.is_error) {

@@ -1,7 +1,8 @@
 use types::*;
 use wasm_bindgen::prelude::*;
 use wasmparser::{
-    GlobalSectionReader, ImportSectionReader, MemorySectionReader, TypeSectionReader,
+    FunctionSectionReader, GlobalSectionReader, ImportSectionReader, MemorySectionReader,
+    TypeSectionReader,
 };
 
 mod types;
@@ -29,6 +30,22 @@ pub fn parse_import_section(data: &[u8], offset: usize) -> Result<ImportResultAr
             Err(err) => ImportResult::Err(err.into()),
         })
         .collect::<Vec<ImportResult>>();
+    Ok(imports.into())
+}
+
+#[wasm_bindgen]
+pub fn parse_function_section(
+    data: &[u8],
+    offset: usize,
+) -> Result<FunctionResultArray, BinaryError> {
+    let reader = FunctionSectionReader::new(data, offset)?;
+    let imports = reader
+        .into_iter()
+        .map(|f| match f {
+            Ok(i) => FunctionResult::Ok(Function { type_idx: i }),
+            Err(err) => FunctionResult::Err(err.into()),
+        })
+        .collect::<Vec<FunctionResult>>();
     Ok(imports.into())
 }
 

@@ -267,6 +267,11 @@ impl From<ParserTagType> for TagType {
     }
 }
 
+#[wasmtools_struct]
+pub struct Function {
+    pub type_idx: u32,
+}
+
 /// Represents a memory's type.
 #[wasmtools_struct]
 pub struct MemoryType {
