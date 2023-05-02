@@ -2,12 +2,12 @@ use js_sys::Array;
 use macros::*;
 use wasm_bindgen::prelude::*;
 use wasmparser::{
-    BinaryReaderError, ConstExpr as ParserConstExpr, FuncType as ParserFuncType,
-    Global as ParserGlobal, GlobalType as ParserGlobalType, Import as ParserImport,
-    MemoryType as ParserMemoryType, RefType as ParserRefType, Table as ParserTable,
-    TableInit as ParserTableInit, TableType as ParserTableType, TagKind as ParserTagKind,
-    TagType as ParserTagType, Type as ParserType, TypeRef as ParserTypeRef,
-    ValType as ParserValType,
+    BinaryReaderError, ConstExpr as ParserConstExpr, Export as ParserExport,
+    ExternalKind as ParserExternalKind, FuncType as ParserFuncType, Global as ParserGlobal,
+    GlobalType as ParserGlobalType, Import as ParserImport, MemoryType as ParserMemoryType,
+    RefType as ParserRefType, Table as ParserTable, TableInit as ParserTableInit,
+    TableType as ParserTableType, TagKind as ParserTagKind, TagType as ParserTagType,
+    Type as ParserType, TypeRef as ParserTypeRef, ValType as ParserValType,
 };
 
 #[wasm_bindgen(getter_with_clone)]
@@ -90,20 +90,13 @@ pub enum ValType {
 
 impl From<ParserValType> for ValType {
     fn from(value: ParserValType) -> Self {
-        ValType {
-            kind: match value {
-                ParserValType::I32 => "i32",
-                ParserValType::I64 => "i64",
-                ParserValType::F32 => "f32",
-                ParserValType::F64 => "f64",
-                ParserValType::V128 => "v128",
-                ParserValType::Ref(_) => "ref",
-            }
-            .to_string(),
-            ref_type: match value {
-                ParserValType::Ref(rt) => Some(rt.into()),
-                _ => None,
-            },
+        match value {
+            ParserValType::I32 => ValType::new_i32(),
+            ParserValType::I64 => ValType::new_i64(),
+            ParserValType::F32 => ValType::new_f32(),
+            ParserValType::F64 => ValType::new_f64(),
+            ParserValType::V128 => ValType::new_v128(),
+            ParserValType::Ref(r) => ValType::new_ref_type(r.into()),
         }
     }
 }
@@ -137,14 +130,8 @@ pub enum Type {
 
 impl From<ParserType> for Type {
     fn from(value: ParserType) -> Self {
-        Type {
-            kind: match value {
-                ParserType::Func(_) => "func",
-            }
-            .to_string(),
-            func: match value {
-                ParserType::Func(ft) => Some(ft.into()),
-            },
+        match value {
+            ParserType::Func(f) => Type::new_func(f.into()),
         }
     }
 }
@@ -162,31 +149,11 @@ pub enum TypeRef {
 impl From<ParserTypeRef> for TypeRef {
     fn from(value: ParserTypeRef) -> Self {
         match value {
-            ParserTypeRef::Func(f) => TypeRef {
-                kind: "func".to_string(),
-                func: Some(f),
-                ..Default::default()
-            },
-            ParserTypeRef::Table(t) => TypeRef {
-                kind: "table".to_string(),
-                table: Some(t.into()),
-                ..Default::default()
-            },
-            ParserTypeRef::Global(g) => TypeRef {
-                kind: "global".to_string(),
-                global: Some(g.into()),
-                ..Default::default()
-            },
-            ParserTypeRef::Memory(m) => TypeRef {
-                kind: "memory".to_string(),
-                memory: Some(m.into()),
-                ..Default::default()
-            },
-            ParserTypeRef::Tag(t) => TypeRef {
-                kind: "tag".to_string(),
-                tag: Some(t.into()),
-                ..Default::default()
-            },
+            ParserTypeRef::Func(f) => TypeRef::new_func(f),
+            ParserTypeRef::Table(t) => TypeRef::new_table(t.into()),
+            ParserTypeRef::Global(g) => TypeRef::new_global(g.into()),
+            ParserTypeRef::Memory(m) => TypeRef::new_memory(m.into()),
+            ParserTypeRef::Tag(t) => TypeRef::new_tag(t.into()),
         }
     }
 }
@@ -243,9 +210,7 @@ pub enum TagKind {
 impl From<ParserTagKind> for TagKind {
     fn from(value: ParserTagKind) -> Self {
         match value {
-            ParserTagKind::Exception => TagKind {
-                kind: "exception".to_string(),
-            },
+            ParserTagKind::Exception => TagKind::new_exception(),
         }
     }
 }
@@ -286,14 +251,8 @@ pub enum TableInit {
 impl From<ParserTableInit<'_>> for TableInit {
     fn from(value: ParserTableInit) -> Self {
         match value {
-            ParserTableInit::Expr(expr) => TableInit {
-                kind: "expr".to_string(),
-                expr: Some(expr.into()), // TODO
-            },
-            ParserTableInit::RefNull => TableInit {
-                kind: "ref_null".to_string(),
-                expr: None,
-            },
+            ParserTableInit::Expr(expr) => TableInit::new_expr(expr.into()),
+            ParserTableInit::RefNull => TableInit::new_ref_null(),
         }
     }
 }
@@ -408,6 +367,56 @@ impl From<ParserGlobal<'_>> for Global {
         Global {
             ty: value.ty.into(),
             init_expr: value.init_expr.into(),
+        }
+    }
+}
+
+/// External types as defined [here].
+///
+/// [here]: https://webassembly.github.io/spec/core/syntax/types.html#external-types
+#[wasmtools_enum]
+pub enum ExternalKind {
+    /// The external kind is a function.
+    func,
+    /// The external kind if a table.
+    table,
+    /// The external kind is a memory.
+    memory,
+    /// The external kind is a global.
+    global,
+    /// The external kind is a tag.
+    tag,
+}
+
+impl From<ParserExternalKind> for ExternalKind {
+    fn from(value: ParserExternalKind) -> Self {
+        match value {
+            ParserExternalKind::Func => ExternalKind::new_func(),
+            ParserExternalKind::Table => ExternalKind::new_table(),
+            ParserExternalKind::Memory => ExternalKind::new_memory(),
+            ParserExternalKind::Global => ExternalKind::new_global(),
+            ParserExternalKind::Tag => ExternalKind::new_tag(),
+        }
+    }
+}
+
+/// Represents an export in a WebAssembly module.
+#[wasmtools_struct]
+pub struct Export {
+    /// The name of the exported item.
+    pub name: String,
+    /// The kind of the export.
+    pub kind: ExternalKind,
+    /// The index of the exported item.
+    pub index: u32,
+}
+
+impl From<ParserExport<'_>> for Export {
+    fn from(value: ParserExport<'_>) -> Self {
+        Export {
+            name: value.name.to_string(),
+            kind: value.kind.into(),
+            index: value.index,
         }
     }
 }

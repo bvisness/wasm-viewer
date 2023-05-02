@@ -165,6 +165,15 @@ doButton.addEventListener("click", async () => {
                         }
                     }
                 } break;
+                case "Export": {
+                    for (const [i, exp] of section.exports.entries()) {
+                        if (exp.is_error) {
+                            sectionEl.appendChild(p(`ERROR (offset ${exp.offset}): ${exp.message}`));
+                        } else {
+                            sectionEl.appendChild(p(`"${exp.name}": ${exp.kind.kind} ${exp.index}`));
+                        }
+                    }
+                } break;
                 case "Code": {
                     sectionEl.appendChild(p(`Number of functions: ${section.funcs.length}`));
 

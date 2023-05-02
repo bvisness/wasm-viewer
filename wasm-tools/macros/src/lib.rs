@@ -39,11 +39,22 @@ pub fn wasmtools_enum(_: TokenStream, input: TokenStream) -> TokenStream {
     };
 
     let mut struct_fields = quote! {};
+    let mut constructors = quote! {};
     let mut js_types: Vec<String> = vec![];
     for variant in enum_data.variants {
         let field_name = &variant.ident;
+        let field_name_str = field_name.to_string();
+        let constructor_name = format_ident!("new_{}", field_name);
         match variant.fields {
             syn::Fields::Unit => {
+                constructors.extend(quote! {
+                    pub fn #constructor_name() -> Self {
+                        #name {
+                            kind: #field_name_str.to_string(),
+                            ..Default::default()
+                        }
+                    }
+                });
                 js_types.push(format!(
                     "{{ kind: \"{}\" }}",
                     variant.ident.to_string(),
@@ -67,6 +78,15 @@ pub fn wasmtools_enum(_: TokenStream, input: TokenStream) -> TokenStream {
                 struct_fields.extend(quote! {
                     pub #field_name: Option<#field_type>,
                 });
+                constructors.extend(quote! {
+                    pub fn #constructor_name(#field_name: #field_type) -> Self {
+                        #name {
+                            kind: #field_name_str.to_string(),
+                            #field_name: Some(#field_name),
+                            ..Default::default()
+                        }
+                    }
+                });
                 js_types.push(format!(
                     "{{ kind: \"{}\", {}: {} }}",
                     variant.ident.to_string(),
@@ -85,6 +105,11 @@ pub fn wasmtools_enum(_: TokenStream, input: TokenStream) -> TokenStream {
             #struct_fields
         }
     };
+    let constructor_impl = quote! {
+        impl #name {
+            #constructors
+        }
+    };
     let ts_def = format!(r#"
 export type {} = {{ is_error: false }} & ({});
     "#, name, js_types.join(" | "));
@@ -92,11 +117,11 @@ export type {} = {{ is_error: false }} & ({});
         #[wasm_bindgen(typescript_custom_section)]
         const _: &'static str = #ts_def;
     };
-
     let arrays = arrays_and_results(name);
 
     let output = quote! {
         #output_struct
+        #constructor_impl
         #arrays
         #ts
     };

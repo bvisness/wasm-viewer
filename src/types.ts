@@ -1,4 +1,4 @@
-import type { Type, MemoryType, Global, BinaryError, ValType, RefType, Import, Function, Table } from "../wasm-tools/pkg/wasm_viewer";
+import type { Type, MemoryType, Global, BinaryError, ValType, RefType, Import, Function, Table, Export } from "../wasm-tools/pkg/wasm_viewer";
 
 export interface FuncInfo {
     size: number;
@@ -39,6 +39,11 @@ export interface GlobalSection {
     globals: Array<Global | BinaryError>;
 }
 
+export interface ExportSection {
+    type: "Export";
+    exports: Array<Export | BinaryError>;
+}
+
 export interface CodeSection {
     type: "Code";
     funcs: FuncInfo[];
@@ -52,6 +57,7 @@ export type Section =
     | TableSection
     | MemorySection
     | GlobalSection
+    | ExportSection
     | CodeSection;
 
 export interface Module {

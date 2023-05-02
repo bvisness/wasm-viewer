@@ -1,8 +1,8 @@
 use types::*;
 use wasm_bindgen::prelude::*;
 use wasmparser::{
-    FunctionSectionReader, GlobalSectionReader, ImportSectionReader, MemorySectionReader,
-    TableSectionReader, TypeSectionReader,
+    ExportSectionReader, FunctionSectionReader, GlobalSectionReader, ImportSectionReader,
+    MemorySectionReader, TableSectionReader, TypeSectionReader,
 };
 
 mod types;
@@ -88,5 +88,18 @@ pub fn parse_global_section(data: &[u8], offset: usize) -> Result<GlobalResultAr
             Err(err) => GlobalResult::Err(err.into()),
         })
         .collect::<Vec<GlobalResult>>();
+    Ok(globals.into())
+}
+
+#[wasm_bindgen]
+pub fn parse_export_section(data: &[u8], offset: usize) -> Result<ExportResultArray, BinaryError> {
+    let reader = ExportSectionReader::new(data, offset)?;
+    let globals = reader
+        .into_iter()
+        .map(|g| match g {
+            Ok(global) => ExportResult::Ok(global.into()),
+            Err(err) => ExportResult::Err(err.into()),
+        })
+        .collect::<Vec<ExportResult>>();
     Ok(globals.into())
 }
