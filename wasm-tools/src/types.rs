@@ -2,7 +2,8 @@ use js_sys::Array;
 use macros::*;
 use wasm_bindgen::prelude::*;
 use wasmparser::{
-    BinaryReaderError, ConstExpr as ParserConstExpr, Export as ParserExport,
+    BinaryReaderError, ConstExpr as ParserConstExpr, Element as ParserElement,
+    ElementItems as ParserElementItems, ElementKind as ParserElementKind, Export as ParserExport,
     ExternalKind as ParserExternalKind, FuncType as ParserFuncType, Global as ParserGlobal,
     GlobalType as ParserGlobalType, Import as ParserImport, MemoryType as ParserMemoryType,
     RefType as ParserRefType, Table as ParserTable, TableInit as ParserTableInit,
@@ -49,8 +50,7 @@ impl From<BinaryReaderError> for BinaryError {
 /// The reference types proposal first introduced `externref` and `funcref`.
 ///
 /// The function refererences proposal introduced typed function references.
-#[derive(Debug, Clone)]
-#[wasm_bindgen(getter_with_clone)]
+#[wasmtools_struct]
 pub struct RefType {
     /// "type", "func", or "extern"
     pub kind: String,
@@ -102,8 +102,7 @@ impl From<ParserValType> for ValType {
 }
 
 /// Represents a type of a function in a WebAssembly module.
-#[derive(Debug, Clone)]
-#[wasm_bindgen(getter_with_clone)]
+#[wasmtools_struct]
 pub struct FuncType {
     /// The combined parameters and result types.
     pub params_results: ValTypeArray,
@@ -318,8 +317,7 @@ impl From<ParserMemoryType> for MemoryType {
 }
 
 /// Represents a global's type.
-#[derive(Debug, Clone)]
-#[wasm_bindgen(getter_with_clone)]
+#[wasmtools_struct]
 pub struct GlobalType {
     /// The global's type.
     pub content_type: ValType,
@@ -337,8 +335,7 @@ impl From<ParserGlobalType> for GlobalType {
 }
 
 /// Represents an initialization expression.
-#[derive(Debug, Clone)]
-#[wasm_bindgen(getter_with_clone)]
+#[wasmtools_struct]
 pub struct ConstExpr {
     pub data: Vec<u8>,
 }
@@ -417,6 +414,88 @@ impl From<ParserExport<'_>> for Export {
             name: value.name.to_string(),
             kind: value.kind.into(),
             index: value.index,
+        }
+    }
+}
+
+#[wasmtools_struct]
+pub struct ElementKindActive {
+    /// The index of the table being initialized.
+    pub table_index: u32,
+    /// The initial expression of the element segment.
+    pub offset_expr: ConstExpr,
+}
+
+/// The kind of element segment.
+#[wasmtools_enum]
+pub enum ElementKind {
+    /// The element segment is passive.
+    passive,
+    /// The element segment is active.
+    active(ElementKindActive),
+    /// The element segment is declared.
+    declared,
+}
+
+impl From<ParserElementKind<'_>> for ElementKind {
+    fn from(value: ParserElementKind) -> Self {
+        match value {
+            ParserElementKind::Passive => ElementKind::new_passive(),
+            ParserElementKind::Active {
+                table_index,
+                offset_expr,
+            } => ElementKind::new_active(ElementKindActive {
+                table_index: table_index.unwrap_or(0),
+                offset_expr: offset_expr.into(),
+            }),
+            ParserElementKind::Declared => ElementKind::new_declared(),
+        }
+    }
+}
+
+/// Represents the items of an element segment.
+#[wasmtools_enum]
+pub enum ElementItems {
+    /// This element contains function indices.
+    functions(Vec<u32>),
+    /// This element contains constant expressions used to initialize the table.
+    expressions(ConstExprArray),
+}
+
+impl From<ParserElementItems<'_>> for ElementItems {
+    fn from(value: ParserElementItems) -> Self {
+        match value {
+            ParserElementItems::Functions(funcs) => {
+                let fs = funcs.into_iter().map(|f| f.unwrap()).collect();
+                ElementItems::new_functions(fs)
+            }
+            ParserElementItems::Expressions(exprs) => {
+                let es: Vec<ConstExpr> = exprs.into_iter().map(|e| e.unwrap().into()).collect();
+                ElementItems::new_expressions(es.into())
+            }
+        }
+    }
+}
+
+/// Represents a core WebAssembly element segment.
+#[wasmtools_struct]
+pub struct Element {
+    /// The kind of the element segment.
+    pub kind: ElementKind,
+    /// The initial elements of the element segment.
+    pub items: ElementItems,
+    /// The type of the elements.
+    pub ty: RefType,
+    // /// The range of the the element segment.
+    // pub range: Range<usize>,
+}
+
+impl From<ParserElement<'_>> for Element {
+    fn from(value: ParserElement) -> Self {
+        Element {
+            kind: value.kind.into(),
+            items: value.items.into(),
+            ty: value.ty.into(),
         }
     }
 }

@@ -1,8 +1,8 @@
 use types::*;
 use wasm_bindgen::prelude::*;
 use wasmparser::{
-    ExportSectionReader, FunctionSectionReader, GlobalSectionReader, ImportSectionReader,
-    MemorySectionReader, TableSectionReader, TypeSectionReader,
+    ElementSectionReader, ExportSectionReader, FunctionSectionReader, GlobalSectionReader,
+    ImportSectionReader, MemorySectionReader, TableSectionReader, TypeSectionReader,
 };
 
 mod types;
@@ -12,8 +12,8 @@ pub fn parse_type_section(data: &[u8], offset: usize) -> Result<TypeResultArray,
     let reader = TypeSectionReader::new(data, offset)?;
     let types = reader
         .into_iter()
-        .map(|t| match t {
-            Ok(ty) => TypeResult::Ok(ty.into()),
+        .map(|r| match r {
+            Ok(v) => TypeResult::Ok(v.into()),
             Err(err) => TypeResult::Err(err.into()),
         })
         .collect::<Vec<TypeResult>>();
@@ -25,8 +25,8 @@ pub fn parse_import_section(data: &[u8], offset: usize) -> Result<ImportResultAr
     let reader = ImportSectionReader::new(data, offset)?;
     let imports = reader
         .into_iter()
-        .map(|t| match t {
-            Ok(i) => ImportResult::Ok(i.into()),
+        .map(|r| match r {
+            Ok(v) => ImportResult::Ok(v.into()),
             Err(err) => ImportResult::Err(err.into()),
         })
         .collect::<Vec<ImportResult>>();
@@ -41,8 +41,8 @@ pub fn parse_function_section(
     let reader = FunctionSectionReader::new(data, offset)?;
     let imports = reader
         .into_iter()
-        .map(|f| match f {
-            Ok(i) => FunctionResult::Ok(Function { type_idx: i }),
+        .map(|r| match r {
+            Ok(v) => FunctionResult::Ok(Function { type_idx: v }),
             Err(err) => FunctionResult::Err(err.into()),
         })
         .collect::<Vec<FunctionResult>>();
@@ -54,8 +54,8 @@ pub fn parse_table_section(data: &[u8], offset: usize) -> Result<TableResultArra
     let reader = TableSectionReader::new(data, offset)?;
     let imports = reader
         .into_iter()
-        .map(|f| match f {
-            Ok(t) => TableResult::Ok(t.into()),
+        .map(|r| match r {
+            Ok(v) => TableResult::Ok(v.into()),
             Err(err) => TableResult::Err(err.into()),
         })
         .collect::<Vec<TableResult>>();
@@ -71,7 +71,7 @@ pub fn parse_memory_section(
     let mems = reader
         .into_iter()
         .map(|m| match m {
-            Ok(memory) => MemoryTypeResult::Ok(memory.into()),
+            Ok(v) => MemoryTypeResult::Ok(v.into()),
             Err(err) => MemoryTypeResult::Err(err.into()),
         })
         .collect::<Vec<MemoryTypeResult>>();
@@ -84,7 +84,7 @@ pub fn parse_global_section(data: &[u8], offset: usize) -> Result<GlobalResultAr
     let globals = reader
         .into_iter()
         .map(|g| match g {
-            Ok(global) => GlobalResult::Ok(global.into()),
+            Ok(v) => GlobalResult::Ok(v.into()),
             Err(err) => GlobalResult::Err(err.into()),
         })
         .collect::<Vec<GlobalResult>>();
@@ -97,7 +97,7 @@ pub fn parse_export_section(data: &[u8], offset: usize) -> Result<ExportResultAr
     let globals = reader
         .into_iter()
         .map(|g| match g {
-            Ok(global) => ExportResult::Ok(global.into()),
+            Ok(v) => ExportResult::Ok(v.into()),
             Err(err) => ExportResult::Err(err.into()),
         })
         .collect::<Vec<ExportResult>>();
@@ -105,3 +105,19 @@ pub fn parse_export_section(data: &[u8], offset: usize) -> Result<ExportResultAr
 }
 
 // The start section is parsed in JS.
+
+#[wasm_bindgen]
+pub fn parse_element_section(
+    data: &[u8],
+    offset: usize,
+) -> Result<ElementResultArray, BinaryError> {
+    let reader = ElementSectionReader::new(data, offset)?;
+    let globals = reader
+        .into_iter()
+        .map(|r| match r {
+            Ok(v) => ElementResult::Ok(v.into()),
+            Err(err) => ElementResult::Err(err.into()),
+        })
+        .collect::<Vec<ElementResult>>();
+    Ok(globals.into())
+}

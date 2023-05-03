@@ -177,6 +177,23 @@ doButton.addEventListener("click", async () => {
                 case "Start": {
                     sectionEl.appendChild(p(`Start func: ${section.func}`));
                 } break;
+                case "Element": {
+                    for (const [i, element] of section.elements.entries()) {
+                        if (element.is_error) {
+                            sectionEl.appendChild(p(`ERROR (offset ${element.offset}): ${element.message}`));
+                        } else {
+                            const parts = [];
+                            parts.push(element.kind.kind);
+                            switch (element.kind.kind) {
+                                case "active": {
+                                    parts.push(`table ${element.kind.active.table_index}`);
+                                } break;
+                            }
+                            parts.push(`of ${refTypeToString(element.ty)}`);
+                            sectionEl.appendChild(p(`Element ${i}: ${parts.join(", ")}`));
+                        }
+                    }
+                } break;
                 case "Code": {
                     sectionEl.appendChild(p(`Number of functions: ${section.funcs.length}`));
 
