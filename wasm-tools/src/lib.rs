@@ -1,8 +1,9 @@
 use types::*;
 use wasm_bindgen::prelude::*;
 use wasmparser::{
-    ElementSectionReader, ExportSectionReader, FunctionSectionReader, GlobalSectionReader,
-    ImportSectionReader, MemorySectionReader, TableSectionReader, TypeSectionReader,
+    DataSectionReader, ElementSectionReader, ExportSectionReader, FunctionSectionReader,
+    GlobalSectionReader, ImportSectionReader, MemorySectionReader, TableSectionReader,
+    TypeSectionReader,
 };
 
 mod types;
@@ -70,7 +71,7 @@ pub fn parse_memory_section(
     let reader = MemorySectionReader::new(data, offset)?;
     let mems = reader
         .into_iter()
-        .map(|m| match m {
+        .map(|r| match r {
             Ok(v) => MemoryTypeResult::Ok(v.into()),
             Err(err) => MemoryTypeResult::Err(err.into()),
         })
@@ -83,7 +84,7 @@ pub fn parse_global_section(data: &[u8], offset: usize) -> Result<GlobalResultAr
     let reader = GlobalSectionReader::new(data, offset)?;
     let globals = reader
         .into_iter()
-        .map(|g| match g {
+        .map(|r| match r {
             Ok(v) => GlobalResult::Ok(v.into()),
             Err(err) => GlobalResult::Err(err.into()),
         })
@@ -96,7 +97,7 @@ pub fn parse_export_section(data: &[u8], offset: usize) -> Result<ExportResultAr
     let reader = ExportSectionReader::new(data, offset)?;
     let globals = reader
         .into_iter()
-        .map(|g| match g {
+        .map(|r| match r {
             Ok(v) => ExportResult::Ok(v.into()),
             Err(err) => ExportResult::Err(err.into()),
         })
@@ -119,5 +120,18 @@ pub fn parse_element_section(
             Err(err) => ElementResult::Err(err.into()),
         })
         .collect::<Vec<ElementResult>>();
+    Ok(globals.into())
+}
+
+#[wasm_bindgen]
+pub fn parse_data_section(data: &[u8], offset: usize) -> Result<DataResultArray, BinaryError> {
+    let reader = DataSectionReader::new(data, offset)?;
+    let globals = reader
+        .into_iter()
+        .map(|r| match r {
+            Ok(v) => DataResult::Ok(v.into()),
+            Err(err) => DataResult::Err(err.into()),
+        })
+        .collect::<Vec<DataResult>>();
     Ok(globals.into())
 }

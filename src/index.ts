@@ -184,10 +184,8 @@ doButton.addEventListener("click", async () => {
                         } else {
                             const parts = [];
                             parts.push(element.kind.kind);
-                            switch (element.kind.kind) {
-                                case "active": {
-                                    parts.push(`table ${element.kind.active.table_index}`);
-                                } break;
+                            if (element.kind.kind === "active") {
+                                parts.push(`table ${element.kind.active.table_index}`);
                             }
                             parts.push(`of ${refTypeToString(element.ty)}`);
                             sectionEl.appendChild(p(`Element ${i}: ${parts.join(", ")}`));
@@ -204,7 +202,22 @@ doButton.addEventListener("click", async () => {
                     const avg = sum / section.funcs.length;
 
                     sectionEl.appendChild(p(`Average func size: ${Math.round(avg)} bytes`));
-                }
+                } break;
+                case "Data": {
+                    for (const [i, data] of section.datas.entries()) {
+                        if (data.is_error) {
+                            sectionEl.appendChild(p(`ERROR (offset ${data.offset}): ${data.message}`));
+                        } else {
+                            const parts = [];
+                            parts.push(data.kind.kind);
+                            if (data.kind.kind === "active") {
+                                parts.push(`memory ${data.kind.active.memory_index}`);
+                            }
+                            parts.push(`${data.data.length} bytes`);
+                            sectionEl.appendChild(p(`Data ${i}: ${parts.join(", ")}`));
+                        }
+                    }
+                } break;
             }
         }
         sections.appendChild(sectionEl);

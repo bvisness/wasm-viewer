@@ -2,13 +2,14 @@ use js_sys::Array;
 use macros::*;
 use wasm_bindgen::prelude::*;
 use wasmparser::{
-    BinaryReaderError, ConstExpr as ParserConstExpr, Element as ParserElement,
-    ElementItems as ParserElementItems, ElementKind as ParserElementKind, Export as ParserExport,
-    ExternalKind as ParserExternalKind, FuncType as ParserFuncType, Global as ParserGlobal,
-    GlobalType as ParserGlobalType, Import as ParserImport, MemoryType as ParserMemoryType,
-    RefType as ParserRefType, Table as ParserTable, TableInit as ParserTableInit,
-    TableType as ParserTableType, TagKind as ParserTagKind, TagType as ParserTagType,
-    Type as ParserType, TypeRef as ParserTypeRef, ValType as ParserValType,
+    BinaryReaderError, ConstExpr as ParserConstExpr, Data as ParserData,
+    DataKind as ParserDataKind, Element as ParserElement, ElementItems as ParserElementItems,
+    ElementKind as ParserElementKind, Export as ParserExport, ExternalKind as ParserExternalKind,
+    FuncType as ParserFuncType, Global as ParserGlobal, GlobalType as ParserGlobalType,
+    Import as ParserImport, MemoryType as ParserMemoryType, RefType as ParserRefType,
+    Table as ParserTable, TableInit as ParserTableInit, TableType as ParserTableType,
+    TagKind as ParserTagKind, TagType as ParserTagType, Type as ParserType,
+    TypeRef as ParserTypeRef, ValType as ParserValType,
 };
 
 #[wasm_bindgen(getter_with_clone)]
@@ -496,6 +497,58 @@ impl From<ParserElement<'_>> for Element {
             kind: value.kind.into(),
             items: value.items.into(),
             ty: value.ty.into(),
+        }
+    }
+}
+
+#[wasmtools_struct]
+pub struct DataKindActive {
+    /// The memory index for the data segment.
+    pub memory_index: u32,
+    /// The initialization expression for the data segment.
+    pub offset_expr: ConstExpr,
+}
+
+/// The kind of data segment.
+#[wasmtools_enum]
+pub enum DataKind {
+    /// The data segment is passive.
+    passive,
+    /// The data segment is active.
+    active(DataKindActive),
+}
+
+impl From<ParserDataKind<'_>> for DataKind {
+    fn from(value: ParserDataKind) -> Self {
+        match value {
+            ParserDataKind::Passive => DataKind::new_passive(),
+            ParserDataKind::Active {
+                memory_index,
+                offset_expr,
+            } => DataKind::new_active(DataKindActive {
+                memory_index: memory_index,
+                offset_expr: offset_expr.into(),
+            }),
+        }
+    }
+}
+
+/// Represents a data segment in a core WebAssembly module.
+#[wasmtools_struct]
+pub struct Data {
+    /// The kind of data segment.
+    pub kind: DataKind,
+    /// The data of the data segment.
+    pub data: Vec<u8>,
+    // /// The range of the data segment.
+    // pub range: Range<usize>,
+}
+
+impl From<ParserData<'_>> for Data {
+    fn from(value: ParserData) -> Self {
+        Data {
+            kind: value.kind.into(),
+            data: value.data.to_vec(),
         }
     }
 }
