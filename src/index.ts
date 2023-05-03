@@ -218,6 +218,9 @@ doButton.addEventListener("click", async () => {
                         }
                     }
                 } break;
+                case "DataCount": {
+                    sectionEl.appendChild(p(`Num data segments: ${section.numDataSegments}`));
+                } break;
             }
         }
         sections.appendChild(sectionEl);

@@ -64,6 +64,11 @@ export interface DataSection {
     datas: Array<Data | BinaryError>;
 }
 
+export interface DataCountSection {
+    type: "DataCount";
+    numDataSegments: number;
+}
+
 export type Section =
     CustomSection
     | TypeSection
@@ -76,7 +81,8 @@ export type Section =
     | StartSection
     | ElementSection
     | CodeSection
-    | DataSection;
+    | DataSection
+    | DataCountSection;
 
 export interface Module {
     sections: Section[];

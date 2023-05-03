@@ -192,6 +192,17 @@ export async function parse(stream: ReadableStream<Uint8Array>): Promise<Module>
                     datas: datas,
                 });
             } break;
+            case 12: {
+                // Data count section
+                console.log("Data count section");
+                console.log("Getting this many bytes:", sectionSize);
+                const numDatas = await readVarU(reader, 32);
+
+                sections.push({
+                    type: "DataCount",
+                    numDataSegments: numDatas,
+                });
+            } break;
             default: {
                 console.log(`Unknown section type ${sectionID}`);
                 console.log("Advancing by", sectionSize, "to skip over it");
