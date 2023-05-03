@@ -174,6 +174,9 @@ doButton.addEventListener("click", async () => {
                         }
                     }
                 } break;
+                case "Start": {
+                    sectionEl.appendChild(p(`Start func: ${section.func}`));
+                } break;
                 case "Code": {
                     sectionEl.appendChild(p(`Number of functions: ${section.funcs.length}`));
 

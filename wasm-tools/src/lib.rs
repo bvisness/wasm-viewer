@@ -103,3 +103,5 @@ pub fn parse_export_section(data: &[u8], offset: usize) -> Result<ExportResultAr
         .collect::<Vec<ExportResult>>();
     Ok(globals.into())
 }
+
+// The start section is parsed in JS.

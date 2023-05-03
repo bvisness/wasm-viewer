@@ -132,6 +132,17 @@ export async function parse(stream: ReadableStream<Uint8Array>): Promise<Module>
                     exports: exports,
                 });
             } break;
+            case 8: {
+                // Start section
+                console.log("Start section");
+                console.log("Getting this many bytes:", sectionSize);
+                const startFunc = await readVarU(reader, 32);
+
+                sections.push({
+                    type: "Start",
+                    func: startFunc,
+                });
+            } break;
             case 10: {
                 // Code section
                 console.groupCollapsed("Code section");

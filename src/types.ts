@@ -44,6 +44,11 @@ export interface ExportSection {
     exports: Array<Export | BinaryError>;
 }
 
+export interface StartSection {
+    type: "Start";
+    func: number;
+}
+
 export interface CodeSection {
     type: "Code";
     funcs: FuncInfo[];
@@ -58,6 +63,7 @@ export type Section =
     | MemorySection
     | GlobalSection
     | ExportSection
+    | StartSection
     | CodeSection;
 
 export interface Module {
