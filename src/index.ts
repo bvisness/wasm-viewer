@@ -56,7 +56,31 @@ doButton.addEventListener("click", async () => {
 
             switch (section.type) {
                 case "Custom": {
-                    sectionEl.appendChild(p(`Size: ${section.size} bytes`));
+                    sectionEl.appendChild(p(`"${section.custom.name}": ${section.custom.data.length} bytes`));
+                    if (section.names) {
+                        for (const name of section.names) {
+                            if (name.is_error) {
+                                sectionEl.appendChild(p(`ERROR (offset ${name.offset}): ${name.message}`));
+                            } else {
+                                sectionEl.appendChild(p("Names:"));
+                                switch (name.kind) {
+                                    case "module": {
+                                        sectionEl.appendChild(p(`Module: "${name.module}"`));
+                                    } break;
+                                    case "function": {
+                                        for (const func of name.function) {
+                                            if (func.is_error) {
+                                                sectionEl.appendChild(p(`ERROR (offset ${func.offset}): ${func.message}`));
+                                            } else {
+                                                sectionEl.appendChild(p(`Function ${func.index}: "${func.name}"`));
+                                            }
+                                        }
+                                    } break;
+                                    // TODO: all the types of names
+                                }
+                            }
+                        }
+                    }
                 } break;
                 case "Type": {
                     for (const [i, type] of section.types.entries()) {

@@ -6,7 +6,8 @@ use wasmparser::{
     DataKind as ParserDataKind, Element as ParserElement, ElementItems as ParserElementItems,
     ElementKind as ParserElementKind, Export as ParserExport, ExternalKind as ParserExternalKind,
     FuncType as ParserFuncType, Global as ParserGlobal, GlobalType as ParserGlobalType,
-    Import as ParserImport, MemoryType as ParserMemoryType, RefType as ParserRefType,
+    Import as ParserImport, IndirectNaming as ParserIndirectNaming, MemoryType as ParserMemoryType,
+    Name as ParserName, Naming as ParserNaming, RefType as ParserRefType, SectionLimited,
     Table as ParserTable, TableInit as ParserTableInit, TableType as ParserTableType,
     TagKind as ParserTagKind, TagType as ParserTagType, Type as ParserType,
     TypeRef as ParserTypeRef, ValType as ParserValType,
@@ -549,6 +550,133 @@ impl From<ParserData<'_>> for Data {
         Data {
             kind: value.kind.into(),
             data: value.data.to_vec(),
+        }
+    }
+}
+
+#[wasmtools_struct]
+pub struct CustomSection {
+    pub name: String,
+    pub data: Vec<u8>,
+}
+
+/// Represents a name for an index from the names section.
+#[wasmtools_struct]
+pub struct Naming {
+    /// The index being named.
+    pub index: u32,
+    /// The name for the index.
+    pub name: String,
+}
+
+impl From<ParserNaming<'_>> for Naming {
+    fn from(value: ParserNaming<'_>) -> Self {
+        Naming {
+            index: value.index,
+            name: value.name.to_string(),
+        }
+    }
+}
+
+impl From<SectionLimited<'_, ParserNaming<'_>>> for NamingResultArray {
+    fn from(value: SectionLimited<'_, ParserNaming>) -> Self {
+        let res = value
+            .into_iter()
+            .map(|v| match v {
+                Ok(naming) => NamingResult::Ok(naming.into()),
+                Err(err) => NamingResult::Err(err.into()),
+            })
+            .collect::<Vec<NamingResult>>();
+        res.into()
+    }
+}
+
+/// Represents an indirect name in the names custom section.
+#[wasmtools_struct]
+pub struct IndirectNaming {
+    /// The indirect index of the name.
+    pub index: u32,
+    /// The map of names within the `index` prior.
+    pub names: NamingResultArray,
+}
+
+impl From<ParserIndirectNaming<'_>> for IndirectNaming {
+    fn from(value: ParserIndirectNaming<'_>) -> Self {
+        IndirectNaming {
+            index: value.index,
+            names: value.names.into(),
+        }
+    }
+}
+
+impl From<SectionLimited<'_, ParserIndirectNaming<'_>>> for IndirectNamingResultArray {
+    fn from(value: SectionLimited<'_, ParserIndirectNaming>) -> Self {
+        let res = value
+            .into_iter()
+            .map(|v| match v {
+                Ok(naming) => IndirectNamingResult::Ok(naming.into()),
+                Err(err) => IndirectNamingResult::Err(err.into()),
+            })
+            .collect::<Vec<IndirectNamingResult>>();
+        res.into()
+    }
+}
+
+#[wasmtools_struct]
+pub struct NameUnknown {
+    /// The identifier for this subsection.
+    pub ty: u8,
+    /// The contents of this subsection.
+    pub data: Vec<u8>,
+    // /// The range of bytes, relative to the start of the original data
+    // /// stream, that the contents of this subsection reside in.
+    // pub range: Range<usize>,
+}
+
+/// Represents a name read from the names custom section.
+#[wasmtools_enum]
+pub enum Name {
+    /// The name is for the module.
+    module(String),
+    /// The name is for the functions.
+    function(NamingResultArray),
+    /// The name is for the function locals.
+    local(IndirectNamingResultArray),
+    /// The name is for the function labels.
+    label(IndirectNamingResultArray),
+    /// The name is for the types.
+    type_(NamingResultArray),
+    /// The name is for the tables.
+    table(NamingResultArray),
+    /// The name is for the memories.
+    memory(NamingResultArray),
+    /// The name is for the globals.
+    global(NamingResultArray),
+    /// The name is for the element segments.
+    element(NamingResultArray),
+    /// The name is for the data segments.
+    data(NamingResultArray),
+    /// An unknown [name subsection](https://webassembly.github.io/spec/core/appendix/custom.html#subsections).
+    unknown(NameUnknown),
+}
+
+impl From<ParserName<'_>> for Name {
+    fn from(value: ParserName) -> Self {
+        match value {
+            ParserName::Module { name, .. } => Name::new_module(name.to_string()),
+            ParserName::Function(m) => Name::new_function(m.into()),
+            ParserName::Local(m) => Name::new_local(m.into()),
+            ParserName::Label(m) => Name::new_label(m.into()),
+            ParserName::Type(m) => Name::new_type_(m.into()),
+            ParserName::Table(m) => Name::new_table(m.into()),
+            ParserName::Memory(m) => Name::new_memory(m.into()),
+            ParserName::Global(m) => Name::new_global(m.into()),
+            ParserName::Element(m) => Name::new_element(m.into()),
+            ParserName::Data(m) => Name::new_data(m.into()),
+            ParserName::Unknown { ty, data, .. } => Name::new_unknown(NameUnknown {
+                ty: ty,
+                data: data.to_vec(),
+            }),
         }
     }
 }

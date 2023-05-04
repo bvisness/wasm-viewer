@@ -1,7 +1,19 @@
 import { readVarU } from "./leb128";
 import { WasmReader } from "./reader";
-import { FuncInfo, Module, Section } from "./types";
-import { parse_data_section, parse_element_section, parse_export_section, parse_function_section, parse_global_section, parse_import_section, parse_memory_section, parse_table_section, parse_type_section } from "../wasm-tools/pkg/wasm_viewer";
+import { FuncInfo, Module, Section, CustomSection } from "./types";
+import {
+    parse_custom_section,
+    parse_data_section,
+    parse_element_section,
+    parse_export_section,
+    parse_function_section,
+    parse_global_section,
+    parse_import_section,
+    parse_memory_section,
+    parse_name_section,
+    parse_table_section,
+    parse_type_section,
+} from "../wasm-tools/pkg/wasm_viewer";
 
 export async function parse(stream: ReadableStream<Uint8Array>): Promise<Module> {
     const reader = new WasmReader(stream);
@@ -33,13 +45,21 @@ export async function parse(stream: ReadableStream<Uint8Array>): Promise<Module>
             case 0: {
                 // Custom section
                 console.log("Custom section");
-                console.log("Advancing by", sectionSize);
-                await reader.advanceBy(sectionSize);
+                console.log("Getting this many bytes:", sectionSize);
+                const offset = reader.cursor;
+                const bytes = await reader.getNBytes(sectionSize);
+                const custom = parse_custom_section(bytes, offset);
 
-                sections.push({
+                const sec: CustomSection = {
                     type: "Custom",
-                    size: sectionSize,
-                });
+                    custom: custom,
+                };
+                if (sec.custom.name === "name") {
+                    console.log("Custom section is name section; parsing that too");
+                    sec.names = parse_name_section(custom.data, 0); // TODO: wrong offset
+                }
+
+                sections.push(sec);
             } break;
             case 1: {
                 // Type section

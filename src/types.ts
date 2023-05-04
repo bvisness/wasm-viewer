@@ -1,4 +1,19 @@
-import type { Type, MemoryType, Global, BinaryError, ValType, RefType, Import, Function, Table, Export, Element, Data } from "../wasm-tools/pkg/wasm_viewer";
+import type {
+    BinaryError,
+    CustomSection as WasmCustomSection,
+    Data,
+    Element,
+    Export,
+    Function,
+    Global,
+    Import,
+    MemoryType,
+    RefType,
+    Table,
+    Type,
+    ValType,
+    Name,
+} from "../wasm-tools/pkg/wasm_viewer";
 
 export interface FuncInfo {
     size: number;
@@ -6,7 +21,9 @@ export interface FuncInfo {
 
 export interface CustomSection {
     type: "Custom";
-    size: number;
+    custom: WasmCustomSection;
+
+    names?: Array<Name | BinaryError>;
 }
 
 export interface TypeSection {

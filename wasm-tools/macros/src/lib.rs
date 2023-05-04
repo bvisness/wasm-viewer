@@ -176,42 +176,53 @@ fn arrays_and_results(name: &Ident) -> TokenStream2 {
         }
     };
 
-    let rust_array_name = format_ident!("{}Array", name);
-    let rust_result_array_name = format_ident!("{}ResultArray", name);
+    let array_name = format_ident!("{}Array", name);
+    let result_array_name = format_ident!("{}ResultArray", name);
+    let array_name_str = array_name.to_string();
+    let result_array_name_str = result_array_name.to_string();
     let ts_array_type = format!("Array<{}>", name);
     let ts_result_array_type = format!("Array<{} | BinaryError>", name);
     let ts_array = quote! {
         #[wasm_bindgen]
         extern "C" {
             #[derive(Debug, Clone)]
-            #[wasm_bindgen(typescript_type = #ts_array_type)]
-            pub type #rust_array_name;
+            #[wasm_bindgen(typescript_type = #array_name_str)]
+            pub type #array_name;
             #[derive(Debug, Clone)]
-            #[wasm_bindgen(typescript_type = #ts_result_array_type)]
-            pub type #rust_result_array_name;
+            #[wasm_bindgen(typescript_type = #result_array_name_str)]
+            pub type #result_array_name;
         }
     };
     let impl_from_array = quote! {
-        impl From<Vec<#name>> for #rust_array_name {
+        impl From<Vec<#name>> for #array_name {
             fn from(value: Vec<#name>) -> Self {
                 let arr: Array = value.into_iter().map(|v| JsValue::from(v)).collect();
-                arr.unchecked_into::<#rust_array_name>()
+                arr.unchecked_into::<#array_name>()
             }
         }
-        impl From<Vec<#result_name>> for #rust_result_array_name {
+        impl From<Vec<#result_name>> for #result_array_name {
             fn from(value: Vec<#result_name>) -> Self {
                 let arr: Array = value.into_iter().map(|v| match v {
                     #result_name::Ok(ok) => JsValue::from(ok),
                     #result_name::Err(err) => JsValue::from(err),
                 }).collect();
-                arr.unchecked_into::<#rust_result_array_name>()
+                arr.unchecked_into::<#result_array_name>()
             }
         }
+    };
+    let impl_arrays_ts_def = format!(r#"
+export type {} = {};
+export type {} = {};
+    "#, array_name, ts_array_type, result_array_name, ts_result_array_type);
+    let impl_arrays_ts = quote! {
+        #[wasm_bindgen(typescript_custom_section)]
+        const _: &'static str = #impl_arrays_ts_def;
     };
 
     quote! {
         #result_type
         #ts_array
         #impl_from_array
+        #impl_arrays_ts
     }
 }
