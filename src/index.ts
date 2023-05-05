@@ -1,6 +1,6 @@
 import { parse } from "./parse";
 import wasmUrl from "../wasm-tools/pkg/wasm_viewer_bg.wasm";
-import wasmInit, { BinaryError } from "../wasm-tools/pkg";
+import wasmInit, { BinaryError, IndirectNamingResultArray, NamingResultArray } from "../wasm-tools/pkg";
 import { refTypeToString, valTypeToString } from "./types";
 
 async function init() {
@@ -63,20 +63,67 @@ doButton.addEventListener("click", async () => {
                                 sectionEl.appendChild(p(`ERROR (offset ${name.offset}): ${name.message}`));
                             } else {
                                 sectionEl.appendChild(p("Names:"));
+
+                                function nameMap(name: string, map: NamingResultArray) {
+                                    for (const n of map) {
+                                        if (n.is_error) {
+                                            sectionEl.appendChild(p(`ERROR (offset ${n.offset}): ${n.message}`));
+                                        } else {
+                                            sectionEl.appendChild(p(`${name} ${n.index}: "${n.name}"`));
+                                        }
+                                    }
+                                }
+
+                                function indirectNameMap(name: string, map: IndirectNamingResultArray) {
+                                    for (const outer of map) {
+                                        if (outer.is_error) {
+                                            sectionEl.appendChild(p(`ERROR (offset ${outer.offset}): ${outer.message}`));
+                                        } else {
+                                            for (const inner of outer.names) {
+                                                if (inner.is_error) {
+                                                    sectionEl.appendChild(p(`ERROR (offset ${inner.offset}): ${inner.message}`));
+                                                } else {
+                                                    sectionEl.appendChild(p(`${name} ${outer.index}.${inner.index}: "${inner.name}"`));
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+
                                 switch (name.kind) {
                                     case "module": {
                                         sectionEl.appendChild(p(`Module: "${name.module}"`));
                                     } break;
                                     case "function": {
-                                        for (const func of name.function) {
-                                            if (func.is_error) {
-                                                sectionEl.appendChild(p(`ERROR (offset ${func.offset}): ${func.message}`));
-                                            } else {
-                                                sectionEl.appendChild(p(`Function ${func.index}: "${func.name}"`));
-                                            }
-                                        }
+                                        nameMap("Function", name.function);
                                     } break;
-                                    // TODO: all the types of names
+                                    case "local": {
+                                        indirectNameMap("Local", name.local);
+                                    } break;
+                                    case "label": {
+                                        indirectNameMap("Label", name.label);
+                                    } break;
+                                    case "type_": {
+                                        nameMap("Type", name.type_);
+                                    } break;
+                                    case "table": {
+                                        nameMap("Table", name.table);
+                                    } break;
+                                    case "memory": {
+                                        nameMap("Memory", name.memory);
+                                    } break;
+                                    case "global": {
+                                        nameMap("Global", name.global);
+                                    } break;
+                                    case "element": {
+                                        nameMap("Element", name.element);
+                                    } break;
+                                    case "data": {
+                                        nameMap("Data", name.data);
+                                    } break;
+                                    case "unknown": {
+                                        sectionEl.appendChild(p(`Unknown name type ${name.unknown.ty}: ${name.unknown.data.length} bytes`));
+                                    } break;
                                 }
                             }
                         }
