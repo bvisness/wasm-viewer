@@ -9,8 +9,13 @@ crate-type = ["cdylib"]
 [dependencies]
 js-sys = "0.3.61"
 wasm-bindgen = "0.2.84"
-wasmparser = "0.104.0"
+wasmparser = { git = "https://github.com/bytecodealliance/wasm-tools.git" }
+wasmprinter = { git = "https://github.com/bytecodealliance/wasm-tools.git" }
 macros = {path = "macros"}
 
 [package.metadata.wasm-pack.profile.release]
 wasm-opt = false
+
+[patch.'https://github.com/bytecodealliance/wasm-tools.git']
+wasmparser = { git = 'https://github.com/bvisness/wasm-tools.git', branch = 'wasm-viewer-updates' }
+wasmprinter = { git = 'https://github.com/bvisness/wasm-tools.git', branch = 'wasm-viewer-updates' }

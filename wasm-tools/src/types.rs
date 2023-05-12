@@ -1,17 +1,21 @@
 use js_sys::Array;
 use macros::*;
+use std::ops::Range as StdRange;
 use wasm_bindgen::prelude::*;
 use wasmparser::{
     BinaryReaderError, ConstExpr as ParserConstExpr, Data as ParserData,
     DataKind as ParserDataKind, Element as ParserElement, ElementItems as ParserElementItems,
     ElementKind as ParserElementKind, Export as ParserExport, ExternalKind as ParserExternalKind,
-    FuncType as ParserFuncType, Global as ParserGlobal, GlobalType as ParserGlobalType,
-    Import as ParserImport, IndirectNaming as ParserIndirectNaming, MemoryType as ParserMemoryType,
-    Name as ParserName, Naming as ParserNaming, RefType as ParserRefType, SectionLimited,
-    Table as ParserTable, TableInit as ParserTableInit, TableType as ParserTableType,
-    TagKind as ParserTagKind, TagType as ParserTagType, Type as ParserType,
-    TypeRef as ParserTypeRef, ValType as ParserValType,
+    FuncType as ParserFuncType, FunctionBody as ParserFunctionBody, Global as ParserGlobal,
+    GlobalType as ParserGlobalType, Import as ParserImport, IndirectNaming as ParserIndirectNaming,
+    MemoryType as ParserMemoryType, Name as ParserName, Naming as ParserNaming,
+    Operator as ParserOperator, RefType as ParserRefType, SectionLimited, Table as ParserTable,
+    TableInit as ParserTableInit, TableType as ParserTableType, TagKind as ParserTagKind,
+    TagType as ParserTagType, Type as ParserType, TypeRef as ParserTypeRef,
+    ValType as ParserValType,
 };
+
+use crate::names::op_name;
 
 #[wasm_bindgen(getter_with_clone)]
 pub struct BinaryError {
@@ -65,9 +69,17 @@ impl From<ParserRefType> for RefType {
     fn from(value: ParserRefType) -> Self {
         RefType {
             kind: match value.heap_type() {
-                wasmparser::HeapType::Extern => "extern",
-                wasmparser::HeapType::Func => "func",
                 wasmparser::HeapType::TypedFunc(_) => "type",
+                wasmparser::HeapType::Any => "any",
+                wasmparser::HeapType::Eq => "eq",
+                wasmparser::HeapType::Struct => "struct",
+                wasmparser::HeapType::Array => "array",
+                wasmparser::HeapType::I31 => "i31",
+                wasmparser::HeapType::None => "none",
+                wasmparser::HeapType::Func => "func",
+                wasmparser::HeapType::NoFunc => "nofunc",
+                wasmparser::HeapType::Extern => "extern",
+                wasmparser::HeapType::NoExtern => "noextern",
             }
             .to_string(),
             nullable: value.is_nullable(),
@@ -498,6 +510,49 @@ impl From<ParserElement<'_>> for Element {
             kind: value.kind.into(),
             items: value.items.into(),
             ty: value.ty.into(),
+        }
+    }
+}
+
+#[wasmtools_struct]
+pub struct Range {
+    pub start: usize,
+    pub end: usize,
+}
+
+impl From<StdRange<usize>> for Range {
+    fn from(value: StdRange<usize>) -> Self {
+        Range {
+            start: value.start,
+            end: value.end,
+        }
+    }
+}
+
+#[wasmtools_struct]
+pub struct FunctionBody {
+    pub range: Range,
+    pub ops: OperatorResultArray,
+}
+
+impl From<ParserFunctionBody<'_>> for FunctionBody {
+    fn from(value: ParserFunctionBody) -> Self {
+        FunctionBody {
+            range: value.range().into(),
+            ops: Vec::new().into(),
+        }
+    }
+}
+
+#[wasmtools_struct]
+pub struct Operator {
+    pub name: String,
+}
+
+impl From<ParserOperator<'_>> for Operator {
+    fn from(value: ParserOperator) -> Self {
+        Operator {
+            name: op_name(&value),
         }
     }
 }

@@ -13,11 +13,8 @@ import type {
     Type,
     ValType,
     Name,
+    FunctionBody,
 } from "../wasm-tools/pkg/wasm_viewer";
-
-export interface FuncInfo {
-    size: number;
-}
 
 export interface CustomSection {
     type: "Custom";
@@ -73,7 +70,7 @@ export interface ElementSection {
 
 export interface CodeSection {
     type: "Code";
-    funcs: FuncInfo[];
+    funcs: Array<FunctionBody | BinaryError>;
 }
 
 export interface DataSection {

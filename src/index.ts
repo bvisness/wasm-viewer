@@ -41,6 +41,11 @@ doButton.addEventListener("click", async () => {
         el.innerText = msg;
         return el;
     }
+    function plain(type: string, msg: string) {
+        const el = document.createElement(type);
+        el.innerText = msg;
+        return el;
+    }
 
     const wasmFile = filePicker.files[0];
     const module = await parse(wasmFile.stream());
@@ -266,13 +271,20 @@ doButton.addEventListener("click", async () => {
                 case "Code": {
                     sectionEl.appendChild(p(`Number of functions: ${section.funcs.length}`));
 
-                    let sum = 0;
-                    for (const func of section.funcs) {
-                        sum += func.size;
+                    for (const [i, func] of section.funcs.entries()) {
+                        if (func.is_error) {
+                            sectionEl.appendChild(p(`ERROR (offset ${func.offset}): ${func.message}`));
+                        } else {
+                            sectionEl.appendChild(plain("h3", `Func ${i}`));
+                            for (const op of func.ops) {
+                                if (op.is_error) {
+                                    sectionEl.appendChild(p(`ERROR (offset ${op.offset}): ${op.message}`));
+                                } else {
+                                    sectionEl.appendChild(p(op.name));
+                                }
+                            }
+                        }
                     }
-                    const avg = sum / section.funcs.length;
-
-                    sectionEl.appendChild(p(`Average func size: ${Math.round(avg)} bytes`));
                 } break;
                 case "Data": {
                     for (const [i, data] of section.datas.entries()) {

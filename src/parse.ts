@@ -2,10 +2,12 @@ import { readVarU } from "./leb128";
 import { WasmReader } from "./reader";
 import { FuncInfo, Module, Section, CustomSection } from "./types";
 import {
+    parse_code_section,
     parse_custom_section,
     parse_data_section,
     parse_element_section,
     parse_export_section,
+    parse_function_body,
     parse_function_section,
     parse_global_section,
     parse_import_section,
@@ -178,22 +180,24 @@ export async function parse(stream: ReadableStream<Uint8Array>): Promise<Module>
             } break;
             case 10: {
                 // Code section
-                console.groupCollapsed("Code section");
+                console.log("Code section");
+                console.log("Getting this many bytes:", sectionSize);
+                const offset = reader.cursor;
+                const bytes = await reader.getNBytes(sectionSize);
+                const funcs = parse_code_section(bytes, offset);
 
-                const numFuncs = await readVarU(reader, 32);
-                console.log(numFuncs, "functions");
+                // TODO: Parse functions separately on a thread or whatever
 
-                const funcs = new Array<FuncInfo>(numFuncs);
-                for (let i = 0; i < numFuncs; i++) {
-                    const funcSize = await readVarU(reader, 32);
-                    console.log("Function with size", funcSize);
-                    funcs[i] = {
-                        size: funcSize,
-                    };
-                    await reader.advanceBy(funcSize);
+                for (const func of funcs) {
+                    if (func.is_error) {
+                        continue;
+                    }
+                    const start = func.range.start - offset;
+                    const end = start + (func.range.end - func.range.start);
+                    const funcBytes = bytes.slice(start, end);
+                    func.ops = parse_function_body(funcBytes, func.range.start);
                 }
 
-                console.groupEnd();
                 sections.push({
                     type: "Code",
                     funcs: funcs,
