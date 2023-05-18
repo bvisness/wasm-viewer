@@ -1,0 +1,10 @@
+:root {
+  --viewer-background: #e6ecf0;
+  --item-background: #fff;
+  --border-dim: #5e8aa8;
+  --error-background: #ffdbe2;
+}
+
+.b--dim {
+  border-color: var(--border-dim);
+}

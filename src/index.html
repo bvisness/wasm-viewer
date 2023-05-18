@@ -2,13 +2,16 @@
 
 <head>
     <title>WASM Viewer</title>
+    <link rel="stylesheet" href="src/style.css">
 </head>
 
 <body>
     <h1>WASM Viewer</h1>
     <input id="file-picker" type="file" accept="application/wasm">
     <button id="doeet">View WASM Module</button>
-    <div id="sections"></div>
+    <div class="viewer">
+        <div id="sections"></div>
+    </div>
 
     <script src="src/index.ts"></script>
 </body>

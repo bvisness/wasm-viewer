@@ -10,7 +10,7 @@ const outdir = 'dist';
 fs.readdirSync(outdir).forEach(f => fs.rmSync(`${outdir}/${f}`));
 
 const opts = {
-  entryPoints: ['src/index.ts'],
+  entryPoints: ['src/index.ts', 'src/style.css'],
   entryNames: '[name]-[hash]',
   minify: prod,
   bundle: true,

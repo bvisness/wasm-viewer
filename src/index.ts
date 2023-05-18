@@ -1,7 +1,8 @@
 import { parse } from "./parse";
 import wasmUrl from "../wasm-tools/pkg/wasm_viewer_bg.wasm";
-import wasmInit, { BinaryError, IndirectNamingResultArray, NamingResultArray } from "../wasm-tools/pkg";
+import wasmInit, { BinaryError, Import, IndirectNamingResultArray, NamingResultArray } from "../wasm-tools/pkg";
 import { refTypeToString, valTypeToString } from "./types";
+import { E, F, Items, Toggle, TypeRef, WVNode, WasmError } from "./components";
 
 async function init() {
     const url = wasmUrl as unknown as string;
@@ -137,7 +138,7 @@ doButton.addEventListener("click", async () => {
                 case "Type": {
                     for (const [i, type] of section.types.entries()) {
                         if (type.is_error) {
-                            sectionEl.appendChild(p(`ERROR (offset ${type.offset}): ${type.message}`));
+                            sectionEl.appendChild(WasmError(`ERROR (offset ${type.offset}): ${type.message}`));
                         } else {
                             const parts = [];
                             parts.push(type.kind);
@@ -153,32 +154,65 @@ doButton.addEventListener("click", async () => {
                     }
                 } break;
                 case "Import": {
-                    for (const [i, imp] of section.imports.entries()) {
+                    const items: Node[] = [];
+
+                    const importModules: { name: string, imports: Import[] }[] = [];
+                    for (const imp of section.imports) {
                         if (imp.is_error) {
-                            sectionEl.appendChild(p(`ERROR (offset ${imp.offset}): ${imp.message}`));
+                            items.push(WasmError(`ERROR (offset ${imp.offset}): ${imp.message}`));
+                            continue;
+                        }
+                        const existingMod = importModules.find(m => m.name === imp.module);
+                        if (existingMod) {
+                            existingMod.imports.push(imp);
                         } else {
-                            const parts = [];
-                            switch (imp.ty.kind) {
-                                case "func": {
-                                    parts.push(`func of type ${imp.ty.func}`);
-                                } break;
-                                case "global": {
-                                    const mut = imp.ty.global.mutable ? "mutable " : "";
-                                    parts.push(`global ${mut}${valTypeToString(imp.ty.global.content_type)}`);
-                                } break;
-                                case "memory": {
-                                    parts.push("some memory"); // TODO
-                                } break;
-                                case "table": {
-                                    parts.push("some table"); // TODO
-                                } break;
-                                case "tag": {
-                                    parts.push("some tag"); // TODO
-                                } break;
-                            }
-                            sectionEl.appendChild(p(`"${imp.module}" "${imp.name}": ${parts.join(", ")}`));
+                            importModules.push({
+                                name: imp.module,
+                                imports: [imp],
+                            });
                         }
                     }
+
+                    for (const importModule of importModules) {
+                        items.push(Toggle({
+                            title: E("div", [], [
+                                E("b", [], importModule.name),
+                                ` (${importModule.imports.length} items)`,
+                            ]),
+                            children: E("div", ["flex", "flex-column", "g2"], importModule.imports.map(imp => {
+                                let details: WVNode;
+                                switch (imp.ty.kind) {
+                                    case "func": {
+                                        details = F(["function, ", TypeRef({ index: imp.ty.func, text: `type ${imp.ty.func}` })]);
+                                    } break;
+                                    case "global": {
+                                        details = `${imp.ty.global.mutable ? "mutable " : ""}global`;
+                                        // TODO: calculate the global index and mark it in the goto system
+                                    } break;
+                                    case "memory": {
+                                        details = "memory";
+                                        // TODO: all the memory info
+                                        // TODO: calculate the mem index and mark it in the goto system
+                                    } break;
+                                    case "table": {
+                                        details = "table";
+                                        // TODO: all the table info
+                                        // TODO: calculate the table index and mark it in the goto system
+                                    } break;
+                                    case "tag": {
+                                        details = "tag";
+                                        // TODO: all the tag info
+                                        // TODO: calculate the tag index and mark it in the goto system
+                                    } break;
+                                    default: {
+                                        details = "???";
+                                    } break;
+                                }
+                                return E("div", [], [`${imp.name}: `, details]);
+                            })),
+                        }));
+                    }
+                    sectionEl.appendChild(Items(items));
                 } break;
                 case "Function": {
                     for (const [i, func] of section.functions.entries()) {
