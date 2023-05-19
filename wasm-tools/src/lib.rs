@@ -23,17 +23,27 @@ pub fn parse_type_section(data: &[u8], offset: usize) -> Result<TypeResultArray,
     Ok(results.into())
 }
 
+#[wasm_bindgen(getter_with_clone)]
+pub struct ImportSection {
+    pub imports: ImportResultArray,
+    pub range: Range,
+}
+
 #[wasm_bindgen]
-pub fn parse_import_section(data: &[u8], offset: usize) -> Result<ImportResultArray, BinaryError> {
+pub fn parse_import_section(data: &[u8], offset: usize) -> Result<ImportSection, BinaryError> {
     let reader = ImportSectionReader::new(data, offset)?;
+    let range = reader.range();
     let results = reader
-        .into_iter()
+        .into_iter_with_offsets()
         .map(|r| match r {
-            Ok(v) => ImportResult::Ok(v.into()),
+            Ok((offset, v)) => ImportResult::Ok(Import::from_wasm(v, offset)),
             Err(err) => ImportResult::Err(err.into()),
         })
         .collect::<Vec<ImportResult>>();
-    Ok(results.into())
+    Ok(ImportSection {
+        imports: results.into(),
+        range: range.into(),
+    })
 }
 
 #[wasm_bindgen]

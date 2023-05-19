@@ -180,14 +180,17 @@ pub struct Import {
     pub name: String,
     /// The type of the imported item.
     pub ty: TypeRef,
+    /// The byte offset of the import within the module.
+    pub offset: usize,
 }
 
-impl From<ParserImport<'_>> for Import {
-    fn from(value: ParserImport) -> Self {
+impl Import {
+    pub fn from_wasm(value: ParserImport, offset: usize) -> Self {
         Import {
             module: value.module.to_string(),
             name: value.name.to_string(),
             ty: value.ty.into(),
+            offset: offset,
         }
     }
 }

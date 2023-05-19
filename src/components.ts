@@ -18,12 +18,14 @@ function addChildren(n: Node, children: WVNodes) {
   }
 }
 
-export function E(type: keyof HTMLElementTagNameMap, classes: string[], children: WVNodes): Node {
+export function E(type: keyof HTMLElementTagNameMap, classes: string[], children?: WVNodes): Node {
   const el = document.createElement(type);
   if (classes.length > 0) {
     el.classList.add(...classes);
   }
-  addChildren(el, children);
+  if (children) {
+    addChildren(el, children);
+  }
   return el;
 }
 
@@ -50,7 +52,7 @@ export function WasmError(msg: string): Node {
 }
 
 export function Toggle(props: {
-  title: Node | string,
+  title: WVNode,
   children: WVNodes,
 }): Node {
   const outer = document.createElement("div");
@@ -61,17 +63,19 @@ export function Toggle(props: {
   toggler.classList.add("toggle-toggler", "pa2");
   outer.appendChild(toggler);
 
-  const inner = document.createElement("div");
-  inner.classList.add("flex", "flex-column", "flex-grow-1", "pv2", "pr2");
-  inner.appendChild(N(props.title));
+  const titleEl = E("div", ["toggle-title", "pv2", "pr2"], props.title);
+  const inner = E("div", ["flex", "flex-column", "flex-grow-1"], titleEl);
   outer.appendChild(inner);
 
   const contents = document.createElement("div");
-  contents.classList.add("toggle-contents", "pt2");
+  contents.classList.add("toggle-contents", "pb2", "pr2");
   addChildren(contents, props.children);
   inner.appendChild(contents);
 
   toggler.addEventListener("click", () => {
+    outer.classList.toggle("open");
+  });
+  titleEl.addEventListener("click", () => {
     outer.classList.toggle("open");
   });
 

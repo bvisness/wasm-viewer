@@ -157,7 +157,7 @@ doButton.addEventListener("click", async () => {
                     const items: Node[] = [];
 
                     const importModules: { name: string, imports: Import[] }[] = [];
-                    for (const imp of section.imports) {
+                    for (const imp of section.imports.imports) {
                         if (imp.is_error) {
                             items.push(WasmError(`ERROR (offset ${imp.offset}): ${imp.message}`));
                             continue;

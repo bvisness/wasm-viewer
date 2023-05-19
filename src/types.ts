@@ -7,6 +7,7 @@ import type {
     Function,
     Global,
     Import,
+    ImportSection as WasmImportSection,
     MemoryType,
     RefType,
     Table,
@@ -30,7 +31,7 @@ export interface TypeSection {
 
 export interface ImportSection {
     type: "Import";
-    imports: Array<Import | BinaryError>;
+    imports: WasmImportSection;
 }
 
 export interface FunctionSection {

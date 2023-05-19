@@ -1,6 +1,6 @@
 import { readVarU } from "./leb128";
 import { WasmReader } from "./reader";
-import { FuncInfo, Module, Section, CustomSection } from "./types";
+import { Module, Section, CustomSection } from "./types";
 import {
     parse_code_section,
     parse_custom_section,
