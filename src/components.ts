@@ -88,6 +88,20 @@ export function ToggleItem(props: {
   return outer;
 }
 
+export function KindChip(props: { kind: string }) {
+  let colorClass: string;
+  switch (props.kind) {
+    case "memory": {
+      colorClass = "chip-red";
+    } break;
+    case "func":
+    default: {
+      colorClass = "chip-blue";
+    } break;
+  }
+  return E("span", ["chip", colorClass], props.kind);
+}
+
 export function TypeRef(props: {
   module: Module;
   index: number;

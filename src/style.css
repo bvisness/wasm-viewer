@@ -55,7 +55,11 @@
   background-color: #dde6ff;
 }
 
-.import-grid {
+.chip-red {
+  background-color: #fdd;
+}
+
+.import-export-grid {
   display: grid;
   grid-template-columns: max-content auto;
   gap: 0.5rem;

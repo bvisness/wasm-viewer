@@ -1,8 +1,8 @@
 import { parse } from "./parse";
 import wasmUrl from "../wasm-tools/pkg/wasm_viewer_bg.wasm";
-import wasmInit, { BinaryError, Import, IndirectNamingResultArray, NamingResultArray } from "../wasm-tools/pkg";
+import wasmInit, { BinaryError, Export, Import, IndirectNamingResultArray, NamingResultArray } from "../wasm-tools/pkg";
 import { Module, funcTypeToString, refTypeToString, valTypeToString } from "./types";
-import { E, F, Items, ToggleItem, TypeRef, WVNode, WasmError, addToggleEvents } from "./components";
+import { E, F, Items, KindChip, ToggleItem, TypeRef, WVNode, WasmError, addToggleEvents } from "./components";
 
 async function init() {
   const url = wasmUrl as unknown as string;
@@ -187,7 +187,7 @@ doButton.addEventListener("click", async () => {
               E("b", [], importModule.name),
               ` (${importModule.imports.length} items)`,
             ]),
-            children: E("div", ["import-grid"], importModule.imports.map(imp => {
+            children: E("div", ["import-export-grid"], importModule.imports.map(imp => {
               let details: WVNode;
               switch (imp.ty.kind) {
                 case "func": {
@@ -223,7 +223,7 @@ doButton.addEventListener("click", async () => {
               }
               return F([
                 E("div", ["tr"], [
-                  E("span", ["chip", "chip-blue"], imp.ty.kind),
+                  KindChip({ kind: imp.ty.kind }),
                 ]),
                 E("div", ["flex", "items-start", "g2"], [
                   E("div", ["flex", "flex-column", "g1"], [
@@ -238,13 +238,20 @@ doButton.addEventListener("click", async () => {
         sectionContents.appendChild(Items(items));
       } break;
       case "Function": {
+        const items: Node[] = [];
         for (const [i, func] of section.functions.entries()) {
           if (func.is_error) {
-            sectionContents.appendChild(p(`ERROR (offset ${func.offset}): ${func.message}`));
+            items.push(WasmError(`ERROR (offset ${func.offset}): ${func.message}`));
           } else {
-            sectionContents.appendChild(p(`Func ${i}: type ${func.type_idx}`));
+            // TODO: function names
+            items.push(E("div", ["item", "pa2", "flex", "flex-column", "g2"], [
+              E("div", ["b"], `Function ${i}`),
+              E("div", [], TypeRef({ module: module, index: func.type_idx })),
+            ]));
           }
         }
+        sectionContents.appendChild(Items(items));
+        sectionEl.classList.remove("open");
       } break;
       case "Table": {
         for (const [i, table] of section.tables.entries()) {
@@ -299,13 +306,53 @@ doButton.addEventListener("click", async () => {
         }
       } break;
       case "Export": {
-        for (const [i, exp] of section.exports.entries()) {
+        const goodExports: Export[] = [];
+        for (const exp of section.exports) {
           if (exp.is_error) {
-            sectionContents.appendChild(p(`ERROR (offset ${exp.offset}): ${exp.message}`));
+            sectionContents.appendChild(WasmError(`ERROR (offset ${exp.offset}): ${exp.message}`));
           } else {
-            sectionContents.appendChild(p(`"${exp.name}": ${exp.kind.kind} ${exp.index}`));
+            goodExports.push(exp);
           }
         }
+
+        const exports: Node[] = [];
+        for (const exp of goodExports) {
+          let details: WVNode;
+          switch (exp.kind.kind) {
+            // TODO: names of things
+            // TODO: references to each thing
+            case "func": {
+              details = `function ${exp.index}`;
+            } break;
+            case "global": {
+              details = `global ${exp.index}`;
+            } break;
+            case "memory": {
+              details = `memory ${exp.index}`;
+            } break;
+            case "table": {
+              details = `table ${exp.index}`;
+            } break;
+            case "tag": {
+              details = `tag ${exp.index}`;
+            } break;
+            default: {
+              details = "???";
+            } break;
+          }
+          exports.push(
+            E("div", ["tr"], [
+              KindChip({ kind: exp.kind.kind }),
+            ]),
+            E("div", ["flex", "items-start", "g2"], [
+              E("div", ["flex", "flex-column", "g1"], [
+                exp.name,
+                E("div", ["f--small"], details),
+              ]),
+            ]),
+          );
+        }
+        sectionContents.appendChild(E("div", ["item", "pv2", "ph3", "import-export-grid"], exports));
       } break;
       case "Start": {
         sectionContents.appendChild(p(`Start func: ${section.func}`));
