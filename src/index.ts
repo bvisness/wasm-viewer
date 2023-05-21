@@ -190,9 +190,9 @@ doButton.addEventListener("click", async () => {
 
         for (const importModule of importModules) {
           items.push(ToggleItem({
-            title: E("div", [], [
+            title: E("div", ["flex", "g2"], [
               E("b", [], importModule.name),
-              ` (${importModule.imports.length} items)`,
+              ItemCount(importModule.imports.length),
             ]),
             children: E("div", ["import-export-grid"], importModule.imports.map(imp => {
               let details: WVNode;
