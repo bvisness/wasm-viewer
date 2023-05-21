@@ -3,6 +3,8 @@
   --item-background: #fff;
   --border-dim: #5e8aa8;
   --error-background: #ffdbe2;
+  --reference-background: rgba(0, 0, 0, 0.05);
+  --reference-background-hover: rgba(0, 0, 0, 0.1);
 }
 
 .b--dim {

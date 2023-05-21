@@ -7,6 +7,7 @@ const prod = process.argv.includes("--prod");
 const outdir = 'dist';
 
 // Delete all files in dist
+fs.mkdirSync(outdir, { recursive: true });
 fs.readdirSync(outdir).forEach(f => fs.rmSync(`${outdir}/${f}`));
 
 const opts = {

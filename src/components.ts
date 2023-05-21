@@ -1,3 +1,5 @@
+import { Module, funcTypeToString, valTypeToString } from "./types";
+
 export type WVNode = Node | string;
 export type WVNodes = WVNode | WVNode[];
 
@@ -52,8 +54,8 @@ export function WasmError(msg: string): Node {
 }
 
 export function Toggle(props: {
-  title: WVNode,
-  children: WVNodes,
+  title: WVNode;
+  children: WVNodes;
 }): Node {
   const outer = document.createElement("div");
   outer.classList.add("toggle", "item", "flex", "items-start", "ba", "br1", "b--dim");
@@ -83,12 +85,23 @@ export function Toggle(props: {
 }
 
 export function TypeRef(props: {
-  index: number,
-  text?: string,
+  module: Module;
+  index: number;
 }): Node {
   const el = document.createElement("span");
-  el.innerText = `${props.text ?? props.index}`;
-  el.classList.add("type-ref");
+  el.classList.add("type-ref", "reference", "br2");
   el.setAttribute("data-type-index", `${props.index}`);
+
+  const type = props.module.type(props.index);
+  if (type) {
+    switch (type.kind) {
+      case "func": {
+        el.innerText = funcTypeToString(type.func);
+      } break;
+    }
+  } else {
+    el.innerText = `type ${props.index}`;
+  }
+
   return el;
 }

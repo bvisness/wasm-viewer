@@ -35,3 +35,29 @@
 .wasm-error {
   background-color: var(--error-background);
 }
+
+.reference {
+  padding: 0.1em 0.25em;
+  background-color: var(--reference-background);
+  cursor: pointer;
+}
+
+.reference:hover {
+  background-color: var(--reference-background-hover);
+}
+
+.chip {
+  padding: 0.2rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.8em;
+}
+
+.chip-blue {
+  background-color: #dde6ff;
+}
+
+.import-grid {
+  display: grid;
+  grid-template-columns: max-content auto;
+  gap: 0.5rem;
+}

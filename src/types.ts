@@ -1,20 +1,21 @@
 import type {
-    BinaryError,
-    CustomSection as WasmCustomSection,
-    Data,
-    Element,
-    Export,
-    Function,
-    Global,
-    Import,
-    ImportSection as WasmImportSection,
-    MemoryType,
-    RefType,
-    Table,
-    Type,
-    ValType,
-    Name,
-    FunctionBody,
+  BinaryError,
+  CustomSection as WasmCustomSection,
+  Data,
+  Element,
+  Export,
+  Function,
+  Global,
+  Import,
+  ImportSection as WasmImportSection,
+  MemoryType,
+  RefType,
+  Table,
+  Type,
+  ValType,
+  Name,
+  FunctionBody,
+  FuncType,
 } from "../wasm-tools/pkg/wasm_viewer";
 
 export interface CustomSection {
@@ -99,26 +100,66 @@ export type Section =
     | DataSection
     | DataCountSection;
 
-export interface Module {
-    sections: Section[];
+export class Module {
+  sections: Section[];
+
+  constructor(sections: Section[]) {
+    this.sections = sections;
+  }
+
+  section<Type extends Section["type"]>(type: Type): (Section & { type: Type }) | undefined {
+    for (const section of this.sections) {
+      if (section.type === type) {
+        return section as Section & { type: Type };
+      }
+    }
+  }
+
+  type(index: number): Type | undefined {
+    const typeSection = this.section("Type");
+    if (!typeSection) {
+      return undefined;
+    }
+
+    const t = typeSection.types[index];
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+    if (t && !t.is_error) {
+      return t;
+    }
+
+    return undefined;
+  }
 }
 
 export function valTypeToString(t: ValType): string {
-    switch (t.kind) {
-        case "ref_type": return refTypeToString(t.ref_type!);
-        default: return t.kind;
-    }
+  switch (t.kind) {
+    case "ref_type": return refTypeToString(t.ref_type!);
+    default: return t.kind;
+  }
 }
 
 export function refTypeToString(t: RefType): string {
-    switch (t.kind) {
-        case "extern":
-            return t.nullable ? "externref" : "(ref extern)";
-        case "func":
-            return t.nullable ? "funcref" : "(ref func)";
-        case "type":
-            return t.nullable ? `(ref null ${t.type_index})` : `$(ref ${t.type_index})`
-        default:
-            return "[unknown ref type]";
-    }
+  switch (t.kind) {
+    case "extern":
+      return t.nullable ? "externref" : "(ref extern)";
+    case "func":
+      return t.nullable ? "funcref" : "(ref func)";
+    case "type":
+      return t.nullable ? `(ref null ${t.type_index})` : `$(ref ${t.type_index})`;
+    default:
+      return "[unknown ref type]";
+  }
+}
+
+export function funcTypeToString(f: FuncType): string {
+  const params = f.params_results.slice(0, f.len_params);
+  const results = f.params_results.slice(f.len_params);
+  let str = "func";
+  if (params.length > 0) {
+    str += ` (param ${params.map(p => valTypeToString(p)).join(" ")})`;
+  }
+  if (results.length > 0) {
+    str += ` (result ${results.map(r => valTypeToString(r)).join(" ")})`;
+  }
+  return str;
 }
