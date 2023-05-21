@@ -53,6 +53,10 @@ export function WasmError(msg: string): Node {
   return el;
 }
 
+export function ItemCount(count: number): Node {
+  return N(`(${count} item${count === 1 ? "" : "s"})`);
+}
+
 export function addToggleEvents(toggle: HTMLElement) {
   function onToggle(e: Event) {
     e.preventDefault();

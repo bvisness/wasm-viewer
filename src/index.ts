@@ -2,7 +2,7 @@ import { parse } from "./parse";
 import wasmUrl from "../wasm-tools/pkg/wasm_viewer_bg.wasm";
 import wasmInit, { BinaryError, Export, Import, IndirectNamingResultArray, NamingResultArray } from "../wasm-tools/pkg";
 import { Module, funcTypeToString, refTypeToString, valTypeToString } from "./types";
-import { E, F, Items, KindChip, ToggleItem, TypeRef, WVNode, WasmError, addToggleEvents } from "./components";
+import { E, F, ItemCount, Items, KindChip, N, ToggleItem, TypeRef, WVNode, WasmError, addToggleEvents } from "./components";
 
 async function init() {
   const url = wasmUrl as unknown as string;
@@ -57,10 +57,13 @@ doButton.addEventListener("click", async () => {
   for (const section of module.sections) {
     const sectionContents = E("div", ["toggle-contents"], []);
 
+    const headerEl = E("div", ["toggle-title", "ma0", "mt2", "flex", "g2"], [
+      E("b", [], `${section.type} Section`),
+    ]);
     const sectionEl = E("div", ["section", "toggle", "open", "flex", "items-start"], [
       E("div", ["toggle-toggler", "pa2"], ">"),
       E("div", ["flex-grow-1", "flex", "flex-column", "g2"], [
-        E("h2", ["toggle-title", "ma0", "mt2"], `${section.type} Section`),
+        headerEl,
         sectionContents,
       ]),
     ]);
@@ -141,6 +144,8 @@ doButton.addEventListener("click", async () => {
         }
       } break;
       case "Type": {
+        headerEl.appendChild(ItemCount(section.types.length));
+
         const items: Node[] = [];
         for (const [i, type] of section.types.entries()) {
           if (type.is_error) {
@@ -162,6 +167,8 @@ doButton.addEventListener("click", async () => {
         sectionEl.classList.remove("open");
       } break;
       case "Import": {
+        headerEl.appendChild(ItemCount(section.imports.imports.length));
+
         const items: Node[] = [];
 
         const importModules: { name: string; imports: Import[] }[] = [];
@@ -238,6 +245,8 @@ doButton.addEventListener("click", async () => {
         sectionContents.appendChild(Items(items));
       } break;
       case "Function": {
+        headerEl.appendChild(ItemCount(section.functions.length));
+
         const items: Node[] = [];
         for (const [i, func] of section.functions.entries()) {
           if (func.is_error) {
@@ -254,6 +263,8 @@ doButton.addEventListener("click", async () => {
         sectionEl.classList.remove("open");
       } break;
       case "Table": {
+        headerEl.appendChild(ItemCount(section.tables.length));
+
         for (const [i, table] of section.tables.entries()) {
           if (table.is_error) {
             sectionContents.appendChild(p(`ERROR (offset ${table.offset}): ${table.message}`));
@@ -269,6 +280,8 @@ doButton.addEventListener("click", async () => {
         }
       } break;
       case "Memory": {
+        headerEl.appendChild(ItemCount(section.mems.length));
+
         for (const mem of section.mems) {
           if (mem.is_error) {
             sectionContents.appendChild(p(`ERROR (offset ${mem.offset}): ${mem.message}`));
@@ -282,6 +295,8 @@ doButton.addEventListener("click", async () => {
         }
       } break;
       case "Global": {
+        headerEl.appendChild(ItemCount(section.globals.length));
+
         for (const [i, global] of section.globals.entries()) {
           if (global.is_error) {
             sectionContents.appendChild(p(`ERROR (offset ${global.offset}): ${global.message}`));
@@ -306,6 +321,8 @@ doButton.addEventListener("click", async () => {
         }
       } break;
       case "Export": {
+        headerEl.appendChild(ItemCount(section.exports.length));
+
         const goodExports: Export[] = [];
         for (const exp of section.exports) {
           if (exp.is_error) {
@@ -358,6 +375,8 @@ doButton.addEventListener("click", async () => {
         sectionContents.appendChild(p(`Start func: ${section.func}`));
       } break;
       case "Element": {
+        headerEl.appendChild(ItemCount(section.elements.length));
+
         for (const [i, element] of section.elements.entries()) {
           if (element.is_error) {
             sectionContents.appendChild(p(`ERROR (offset ${element.offset}): ${element.message}`));
@@ -373,6 +392,8 @@ doButton.addEventListener("click", async () => {
         }
       } break;
       case "Code": {
+        headerEl.appendChild(ItemCount(section.funcs.length));
+
         sectionContents.appendChild(p(`Number of functions: ${section.funcs.length}`));
 
         for (const [i, func] of section.funcs.entries()) {
@@ -391,6 +412,8 @@ doButton.addEventListener("click", async () => {
         }
       } break;
       case "Data": {
+        headerEl.appendChild(ItemCount(section.datas.length));
+
         for (const [i, data] of section.datas.entries()) {
           if (data.is_error) {
             sectionContents.appendChild(p(`ERROR (offset ${data.offset}): ${data.message}`));
