@@ -106,24 +106,42 @@ export function KindChip(props: { kind: string }) {
   return E("span", ["chip", colorClass], props.kind);
 }
 
+export function Tooltip(msg: string): Node {
+  return E("div", ["tooltip"], [
+    E("div", ["tooltip-content"], msg),
+  ]);
+}
+
+export function Reference(props: {
+  text: string;
+  tooltip?: string;
+  goto?: () => void;
+}): Node {
+  const ref = E("span", ["reference", "br2", "relative"], props.text);
+  if (props.tooltip) {
+    ref.appendChild(Tooltip(props.tooltip));
+  }
+  return ref;
+}
+
 export function TypeRef(props: {
   module: Module;
   index: number;
 }): Node {
-  const el = document.createElement("span");
-  el.classList.add("type-ref", "reference", "br2");
-  el.setAttribute("data-type-index", `${props.index}`);
-
   const type = props.module.type(props.index);
   if (type) {
     switch (type.kind) {
       case "func": {
-        el.innerText = funcTypeToString(type.func);
-      } break;
+        return Reference({
+          text: funcTypeToString(type.func),
+          tooltip: `type ${props.index}`,
+          // TODO: goto
+        });
+      }
     }
   } else {
-    el.innerText = `type ${props.index}`;
+    return Reference({
+      text: `type ${props.index} (invalid)`,
+    });
   }
-
-  return el;
 }

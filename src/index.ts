@@ -2,7 +2,7 @@ import { parse } from "./parse";
 import wasmUrl from "../wasm-tools/pkg/wasm_viewer_bg.wasm";
 import wasmInit, { BinaryError, Export, Import, IndirectNamingResultArray, NamingResultArray } from "../wasm-tools/pkg";
 import { Module, funcTypeToString, refTypeToString, valTypeToString } from "./types";
-import { E, F, ItemCount, Items, KindChip, N, ToggleItem, TypeRef, WVNode, WasmError, addToggleEvents } from "./components";
+import { E, F, ItemCount, Items, KindChip, N, Reference, ToggleItem, TypeRef, WVNode, WasmError, addToggleEvents } from "./components";
 
 async function init() {
   const url = wasmUrl as unknown as string;
@@ -339,7 +339,10 @@ doButton.addEventListener("click", async () => {
             // TODO: names of things
             // TODO: references to each thing
             case "func": {
-              details = `function ${exp.index}`;
+              details = Reference({
+                text: `function ${exp.index}`,
+                // TODO: goto
+              });
             } break;
             case "global": {
               details = `global ${exp.index}`;

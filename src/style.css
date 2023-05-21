@@ -64,3 +64,33 @@
   grid-template-columns: max-content auto;
   gap: 0.5rem;
 }
+
+.tooltip {
+  position: absolute;
+  width: 100%;
+  top: -1.5rem;
+  display: flex;
+  justify-content: center;
+}
+
+*:not(:hover) > .tooltip {
+  display: none;
+}
+
+.tooltip-content {
+  background-color: black;
+  color: white;
+  font-size: 0.8rem;
+  border-radius: 0.25rem;
+  white-space: nowrap;
+  padding: 0.125rem 0.25rem;
+}
+
+.tooltip-content::after {
+  content: '';
+  position: absolute;
+  left: calc(50% - 4px);
+  bottom: -8px;
+  border: 4px solid black;
+  border-color: black transparent transparent;
+}
