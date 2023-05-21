@@ -8,7 +8,6 @@
 
 .viewer {
   font-family: ui-monospace,SFMono-Regular,SF Mono,Menlo,Consolas,Liberation Mono,monospace;
-  padding-left: 2em;
   padding-right: 1rem;
   background-color: var(--viewer-background);
 }

@@ -20,7 +20,7 @@ function addChildren(n: Node, children: WVNodes) {
   }
 }
 
-export function E(type: keyof HTMLElementTagNameMap, classes: string[], children?: WVNodes): Node {
+export function E<T extends keyof HTMLElementTagNameMap>(type: T, classes: string[], children?: WVNodes) {
   const el = document.createElement(type);
   if (classes.length > 0) {
     el.classList.add(...classes);
@@ -53,7 +53,16 @@ export function WasmError(msg: string): Node {
   return el;
 }
 
-export function Toggle(props: {
+export function addToggleEvents(toggle: HTMLElement) {
+  function onToggle(e: Event) {
+    e.preventDefault();
+    toggle.classList.toggle("open");
+  }
+  toggle.querySelector(".toggle-toggler")?.addEventListener("click", onToggle);
+  toggle.querySelector(".toggle-title")?.addEventListener("click", onToggle);
+}
+
+export function ToggleItem(props: {
   title: WVNode;
   children: WVNodes;
 }): Node {
@@ -74,12 +83,7 @@ export function Toggle(props: {
   addChildren(contents, props.children);
   inner.appendChild(contents);
 
-  toggler.addEventListener("click", () => {
-    outer.classList.toggle("open");
-  });
-  titleEl.addEventListener("click", () => {
-    outer.classList.toggle("open");
-  });
+  addToggleEvents(outer);
 
   return outer;
 }
