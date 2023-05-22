@@ -7,12 +7,12 @@ use wasmparser::{
     DataKind as ParserDataKind, Element as ParserElement, ElementItems as ParserElementItems,
     ElementKind as ParserElementKind, Export as ParserExport, ExternalKind as ParserExternalKind,
     FuncType as ParserFuncType, FunctionBody as ParserFunctionBody, Global as ParserGlobal,
-    GlobalType as ParserGlobalType, Import as ParserImport, IndirectNaming as ParserIndirectNaming,
-    MemoryType as ParserMemoryType, Name as ParserName, Naming as ParserNaming,
-    Operator as ParserOperator, RefType as ParserRefType, SectionLimited, Table as ParserTable,
-    TableInit as ParserTableInit, TableType as ParserTableType, TagKind as ParserTagKind,
-    TagType as ParserTagType, Type as ParserType, TypeRef as ParserTypeRef,
-    ValType as ParserValType,
+    GlobalType as ParserGlobalType, HeapType as ParserHeapType, Import as ParserImport,
+    IndirectNaming as ParserIndirectNaming, MemoryType as ParserMemoryType, Name as ParserName,
+    Naming as ParserNaming, Operator as ParserOperator, RefType as ParserRefType, SectionLimited,
+    Table as ParserTable, TableInit as ParserTableInit, TableType as ParserTableType,
+    TagKind as ParserTagKind, TagType as ParserTagType, Type as ParserType,
+    TypeRef as ParserTypeRef, ValType as ParserValType,
 };
 
 use crate::names::op_name;
@@ -51,6 +51,51 @@ impl From<BinaryReaderError> for BinaryError {
 // alleviate the enormous amount of repetition it takes to send these types
 // to JS.
 
+#[wasmtools_enum]
+pub enum HeapType {
+    /// Function of the type at the given index.
+    typed_func(u32),
+    /// Untyped (any) function.
+    func,
+    /// External heap type.
+    extern_,
+    /// The `any` heap type. The common supertype (a.k.a. top) of all internal types.
+    any,
+    /// The `none` heap type. The common subtype (a.k.a. bottom) of all internal types.
+    none,
+    /// The `noextern` heap type. The common subtype (a.k.a. bottom) of all external types.
+    noextern,
+    /// The `nofunc` heap type. The common subtype (a.k.a. bottom) of all function types.
+    nofunc,
+    /// The `eq` heap type. The common supertype of all referenceable types on which comparison
+    /// (ref.eq) is allowed.
+    eq,
+    /// The `struct` heap type. The common supertype of all struct types.
+    struct_,
+    /// The `array` heap type. The common supertype of all array types.
+    array,
+    /// The i31 heap type.
+    i31,
+}
+
+impl From<ParserHeapType> for HeapType {
+    fn from(value: ParserHeapType) -> Self {
+        match value {
+            ParserHeapType::TypedFunc(i) => HeapType::new_typed_func(i),
+            ParserHeapType::Func => HeapType::new_func(),
+            ParserHeapType::Extern => HeapType::new_extern_(),
+            ParserHeapType::Any => HeapType::new_any(),
+            ParserHeapType::None => HeapType::new_none(),
+            ParserHeapType::NoExtern => HeapType::new_noextern(),
+            ParserHeapType::NoFunc => HeapType::new_nofunc(),
+            ParserHeapType::Eq => HeapType::new_eq(),
+            ParserHeapType::Struct => HeapType::new_struct_(),
+            ParserHeapType::Array => HeapType::new_array(),
+            ParserHeapType::I31 => HeapType::new_i31(),
+        }
+    }
+}
+
 /// A reference type.
 ///
 /// The reference types proposal first introduced `externref` and `funcref`.
@@ -58,35 +103,15 @@ impl From<BinaryReaderError> for BinaryError {
 /// The function refererences proposal introduced typed function references.
 #[wasmtools_struct]
 pub struct RefType {
-    /// "type", "func", or "extern"
-    pub kind: String,
+    pub heap_type: HeapType,
     pub nullable: bool,
-    /// If kind is "type", the index of the type being referenced
-    pub type_index: Option<u32>,
 }
 
 impl From<ParserRefType> for RefType {
     fn from(value: ParserRefType) -> Self {
         RefType {
-            kind: match value.heap_type() {
-                wasmparser::HeapType::TypedFunc(_) => "type",
-                wasmparser::HeapType::Any => "any",
-                wasmparser::HeapType::Eq => "eq",
-                wasmparser::HeapType::Struct => "struct",
-                wasmparser::HeapType::Array => "array",
-                wasmparser::HeapType::I31 => "i31",
-                wasmparser::HeapType::None => "none",
-                wasmparser::HeapType::Func => "func",
-                wasmparser::HeapType::NoFunc => "nofunc",
-                wasmparser::HeapType::Extern => "extern",
-                wasmparser::HeapType::NoExtern => "noextern",
-            }
-            .to_string(),
+            heap_type: value.heap_type().into(),
             nullable: value.is_nullable(),
-            type_index: match value.heap_type() {
-                wasmparser::HeapType::TypedFunc(idx) => Some(idx),
-                _ => None,
-            },
         }
     }
 }
@@ -470,11 +495,19 @@ impl From<ParserElementKind<'_>> for ElementKind {
     }
 }
 
+/// Exists to hack around macro issues
+pub type U32Array = Vec<u32>;
+
+#[wasm_bindgen(typescript_custom_section)]
+const _: &'static str = r#"
+export type U32Array = Array<number>;
+"#;
+
 /// Represents the items of an element segment.
 #[wasmtools_enum]
 pub enum ElementItems {
     /// This element contains function indices.
-    functions(Vec<u32>),
+    functions(U32Array),
     /// This element contains constant expressions used to initialize the table.
     expressions(ConstExprArray),
 }

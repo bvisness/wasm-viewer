@@ -2,7 +2,8 @@ import { parse } from "./parse";
 import wasmUrl from "../wasm-tools/pkg/wasm_viewer_bg.wasm";
 import wasmInit, { BinaryError, Export, Import, IndirectNamingResultArray, NamingResultArray } from "../wasm-tools/pkg";
 import { Module, funcTypeToString, refTypeToString, valTypeToString } from "./types";
-import { E, F, ItemCount, Items, KindChip, N, Reference, ToggleItem, TypeRef, WVNode, WasmError, addToggleEvents } from "./components";
+import { E, F, FunctionRef, ItemCount, Items, KindChip, N, RefTypeRef, Reference, TableRef, Toggle, TypeRef, WVNode, WasmError, addToggleEvents } from "./components";
+import { assertUnreachable } from "./util";
 
 async function init() {
   const url = wasmUrl as unknown as string;
@@ -189,7 +190,7 @@ doButton.addEventListener("click", async () => {
         }
 
         for (const importModule of importModules) {
-          items.push(ToggleItem({
+          items.push(Toggle({
             title: E("div", ["flex", "g2"], [
               E("b", [], importModule.name),
               ItemCount(importModule.imports.length),
@@ -265,19 +266,23 @@ doButton.addEventListener("click", async () => {
       case "Table": {
         headerEl.appendChild(ItemCount(section.tables.length));
 
+        const items: Node[] = [];
         for (const [i, table] of section.tables.entries()) {
           if (table.is_error) {
-            sectionContents.appendChild(p(`ERROR (offset ${table.offset}): ${table.message}`));
+            items.push(WasmError(`ERROR (offset ${table.offset}): ${table.message}`));
           } else {
-            const parts = [];
-            parts.push(`of ${refTypeToString(table.ty.element_type)}`);
-            parts.push(`${table.ty.initial} elements`);
-            if (table.ty.maximum) {
-              parts.push(`up to ${table.ty.maximum} elements`);
-            }
-            sectionContents.appendChild(p(`Table ${i}: ${parts.join(", ")}`));
+            // TODO: table names?
+            const initStr = `${table.ty.initial} elements`;
+            const maxStr = table.ty.maximum ? `, max ${table.ty.maximum} elements` : "";
+            items.push(E("div", ["item", "pa2", "flex", "flex-column", "g2"], [
+              E("div", ["b"], `Table ${i}`),
+              E("div", [], ["of ", RefTypeRef({ module: module, type: table.ty.element_type })]),
+              E("div", [], `${initStr}${maxStr}`),
+              // TODO: "initialized by" for active segments
+            ]));
           }
         }
+        sectionContents.appendChild(Items(items));
       } break;
       case "Memory": {
         headerEl.appendChild(ItemCount(section.mems.length));
@@ -304,14 +309,14 @@ doButton.addEventListener("click", async () => {
             const parts = [];
             parts.push(global.ty.content_type.kind);
             if (global.ty.content_type.kind === "ref_type") {
-              const refType = global.ty.content_type.ref_type!;
-              if (refType.nullable) {
-                parts.push("nullable");
-              }
-              parts.push(refType.kind);
-              if (refType.kind === "type") {
-                parts.push(`type ${refType.type_index}`);
-              }
+              // const refType = global.ty.content_type.ref_type!;
+              // if (refType.nullable) {
+              //   parts.push("nullable");
+              // }
+              // parts.push(refType.kind);
+              // if (refType.kind === "type") {
+              //   parts.push(`type ${refType.type_index}`);
+              // }
             }
             if (global.ty.mutable) {
               parts.push("mutable");
@@ -339,10 +344,7 @@ doButton.addEventListener("click", async () => {
             // TODO: names of things
             // TODO: references to each thing
             case "func": {
-              details = Reference({
-                text: `function ${exp.index}`,
-                // TODO: goto
-              });
+              details = FunctionRef({ index: exp.index });
             } break;
             case "global": {
               details = `global ${exp.index}`;
@@ -380,19 +382,47 @@ doButton.addEventListener("click", async () => {
       case "Element": {
         headerEl.appendChild(ItemCount(section.elements.length));
 
+        const items: Node[] = [];
         for (const [i, element] of section.elements.entries()) {
           if (element.is_error) {
-            sectionContents.appendChild(p(`ERROR (offset ${element.offset}): ${element.message}`));
+            items.push(WasmError(`ERROR (offset ${element.offset}): ${element.message}`));
           } else {
-            const parts = [];
-            parts.push(element.kind.kind);
+            // TODO: element segment items
+            const segmentItem = E("div", ["item", "pa2", "flex", "flex-column", "g2"], [
+              E("div", ["b"], `Element Segment ${i}`),
+              E("div", [], [`${element.kind.kind}, of `, RefTypeRef({ module: module, type: element.ty })]),
+            ]);
             if (element.kind.kind === "active") {
-              parts.push(`table ${element.kind.active.table_index}`);
+              const active = element.kind.active;
+              segmentItem.appendChild(E("div", [], [
+                "initializes ", TableRef({ index: active.table_index }),
+                // TODO: offset expr (possibly specializing to i32.const)
+              ]))
             }
-            parts.push(`of ${refTypeToString(element.ty)}`);
-            sectionContents.appendChild(p(`Element ${i}: ${parts.join(", ")}`));
+            let itemNodes: Node[] = [];
+            switch (element.items.kind) {
+              case "functions": {
+                for (const funcIdx of element.items.functions) {
+                  itemNodes.push(E("div", [], FunctionRef({ index: funcIdx })));
+                }
+              } break;
+              case "expressions": {
+                // TODO
+              } break;
+              default:
+                assertUnreachable(element.items);
+            }
+            segmentItem.appendChild(Toggle({
+              title: E("div", [], [
+                E("b", ["mr2"], "Items"),
+                E("span", [], `(${itemNodes.length} total)`),
+              ]),
+              children: E("div", ["flex", "flex-column", "g2"], itemNodes),
+            }));
+            items.push(segmentItem);
           }
         }
+        sectionContents.appendChild(Items(items));
       } break;
       case "Code": {
         headerEl.appendChild(ItemCount(section.funcs.length));

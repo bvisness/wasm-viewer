@@ -16,7 +16,9 @@ import type {
   Name,
   FunctionBody,
   FuncType,
+  HeapType,
 } from "../wasm-tools/pkg/wasm_viewer";
+import { assertUnreachable } from "./util";
 
 export interface CustomSection {
     type: "Custom";
@@ -139,15 +141,31 @@ export function valTypeToString(t: ValType): string {
 }
 
 export function refTypeToString(t: RefType): string {
-  switch (t.kind) {
-    case "extern":
-      return t.nullable ? "externref" : "(ref extern)";
+  switch (t.heap_type.kind) {
+    case "typed_func":
+      return t.nullable ? `(ref null ${t.heap_type.typed_func})` : `$(ref ${t.heap_type.typed_func})`;
     case "func":
       return t.nullable ? "funcref" : "(ref func)";
-    case "type":
-      return t.nullable ? `(ref null ${t.type_index})` : `$(ref ${t.type_index})`;
+    case "extern_":
+      return t.nullable ? "externref" : "(ref extern)";
+    case "any":
+      return t.nullable ? "anyref" : "(ref any)";
+    case "none":
+      return t.nullable ? "noneref" : "(ref none)";
+    case "noextern":
+      return t.nullable ? "noexternref" : "(ref noextern)";
+    case "nofunc":
+      return t.nullable ? "nofuncref" : "(ref nofunc)";
+    case "eq":
+      return t.nullable ? "eqref" : "(ref eq)";
+    case "struct_":
+      return t.nullable ? "structref" : "(ref struct)";
+    case "array":
+      return t.nullable ? "arrayref" : "(ref array)";
+    case "i31":
+      return t.nullable ? "i31ref" : "(ref i31)";
     default:
-      return "[unknown ref type]";
+      return assertUnreachable(t.heap_type);
   }
 }
 

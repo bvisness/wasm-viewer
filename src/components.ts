@@ -1,4 +1,5 @@
-import { Module, funcTypeToString, valTypeToString } from "./types";
+import { RefType } from "../wasm-tools/pkg/wasm_viewer";
+import { Module, funcTypeToString, refTypeToString, valTypeToString } from "./types";
 
 export type WVNode = Node | string;
 export type WVNodes = WVNode | WVNode[];
@@ -66,12 +67,16 @@ export function addToggleEvents(toggle: HTMLElement) {
   toggle.querySelector(".toggle-title")?.addEventListener("click", onToggle);
 }
 
-export function ToggleItem(props: {
+export function Toggle(props: {
   title: WVNode;
+  item?: boolean;
   children: WVNodes;
 }): Node {
   const outer = document.createElement("div");
-  outer.classList.add("toggle", "item", "flex", "items-start", "ba", "br1", "b--dim");
+  outer.classList.add("toggle", "flex", "items-start", "br1");
+  if (props.item) {
+    outer.classList.add("item");
+  }
 
   const toggler = document.createElement("div");
   toggler.innerText = ">";
@@ -144,4 +149,40 @@ export function TypeRef(props: {
       text: `type ${props.index} (invalid)`,
     });
   }
+}
+
+export function FunctionRef(props: {
+  index: number;
+}): Node {
+  return Reference({
+    text: `function ${props.index}`,
+    // TODO: goto
+  });
+}
+
+export function RefTypeRef(props: {
+  module: Module;
+  type: RefType;
+}): Node {
+  switch (props.type.heap_type.kind) {
+    case "typed_func": {
+      return E("span", [], [
+        `(ref ${props.type.nullable ? "null " : ""}`,
+        TypeRef({ module: props.module, index: props.type.heap_type.typed_func }),
+        ")"
+      ]);
+    }
+    default: {
+      return E("span", [], refTypeToString(props.type));
+    }
+  }
+}
+
+export function TableRef(props: {
+  index: number;
+}): Node {
+  return Reference({
+    text: `table ${props.index}`,
+    // TODO: goto
+  });
 }
