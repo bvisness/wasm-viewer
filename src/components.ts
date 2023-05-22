@@ -186,3 +186,13 @@ export function TableRef(props: {
     // TODO: goto
   });
 }
+
+export function Tip(props: {
+  text: string;
+  tooltip: string;
+}): Node {
+  return E("span", ["tip"], [
+    props.text,
+    Tooltip(props.tooltip),
+  ]);
+}

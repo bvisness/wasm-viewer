@@ -181,3 +181,31 @@ export function funcTypeToString(f: FuncType): string {
   }
   return str;
 }
+
+export function memoryTypeToString(mem: MemoryType): string {
+  const parts = [];
+  if (mem.initial === mem.maximum) {
+    parts.push(`exactly ${mem.initial} pages`);
+  } else {
+    parts.push(`${mem.initial} pages`);
+    parts.push(mem.maximum ? `max ${mem.maximum} pages` : "no max");
+  }
+  parts.push(mem.memory64 ? "64-bit" : "32-bit");
+  parts.push(mem.shared ? "shared" : "not shared");
+  return parts.join(", ");
+}
+
+export const WASM_PAGE_SIZE = 65536;
+
+export function bytesToString(numBytes: bigint): string {
+  const fmt = new Intl.NumberFormat();
+  if (numBytes >= 1024 * 1024 * 1024) {
+    return `${fmt.format(numBytes / BigInt(1024 * 1024 * 1024))} GiB`;
+  } else if (numBytes >= 1024 * 1024) {
+    return `${fmt.format(numBytes / BigInt(1024 * 1024))} MiB`;
+  } else if (numBytes >= 1024) {
+    return `${fmt.format(numBytes / BigInt(1024))} KiB`;
+  } else {
+    return `${fmt.format(numBytes)} bytes`;
+  }
+}

@@ -1,8 +1,8 @@
 import { parse } from "./parse";
 import wasmUrl from "../wasm-tools/pkg/wasm_viewer_bg.wasm";
 import wasmInit, { BinaryError, Export, Import, IndirectNamingResultArray, NamingResultArray } from "../wasm-tools/pkg";
-import { Module, funcTypeToString, refTypeToString, valTypeToString } from "./types";
-import { E, F, FunctionRef, ItemCount, Items, KindChip, N, RefTypeRef, Reference, TableRef, Toggle, TypeRef, WVNode, WasmError, addToggleEvents } from "./components";
+import { Module, WASM_PAGE_SIZE, bytesToString, funcTypeToString, memoryTypeToString, refTypeToString, valTypeToString } from "./types";
+import { E, F, FunctionRef, ItemCount, Items, KindChip, N, RefTypeRef, Reference, TableRef, Tip, Toggle, TypeRef, WVNode, WasmError, addToggleEvents } from "./components";
 import { assertUnreachable } from "./util";
 
 async function init() {
@@ -191,6 +191,7 @@ doButton.addEventListener("click", async () => {
 
         for (const importModule of importModules) {
           items.push(Toggle({
+            item: true,
             title: E("div", ["flex", "g2"], [
               E("b", [], importModule.name),
               ItemCount(importModule.imports.length),
@@ -206,13 +207,7 @@ doButton.addEventListener("click", async () => {
                   // TODO: calculate the global index and mark it in the goto system
                 } break;
                 case "memory": {
-                  const mem = imp.ty.memory;
-                  const initialStr = `${mem.initial} pages`;
-                  const maxStr = mem.maximum !== undefined ? `, max ${mem.maximum} pages` : ", no max";
-                  const bitStr = mem.memory64 ? ", 64-bit" : ", 32-bit";
-                  const sharedStr = mem.shared ? ", shared" : ", not shared";
-                  details = E("span", [], `${initialStr}${maxStr}${bitStr}${sharedStr}`);
-                  // TODO: all the memory info
+                  details = E("span", [], memoryTypeToString(imp.ty.memory));
                   // TODO: calculate the mem index and mark it in the goto system
                 } break;
                 case "table": {
@@ -273,7 +268,7 @@ doButton.addEventListener("click", async () => {
           } else {
             // TODO: table names?
             const initStr = `${table.ty.initial} elements`;
-            const maxStr = table.ty.maximum ? `, max ${table.ty.maximum} elements` : "";
+            const maxStr = table.ty.maximum ? `, max ${table.ty.maximum} elements` : ", no max";
             items.push(E("div", ["item", "pa2", "flex", "flex-column", "g2"], [
               E("div", ["b"], `Table ${i}`),
               E("div", [], ["of ", RefTypeRef({ module: module, type: table.ty.element_type })]),
@@ -287,17 +282,44 @@ doButton.addEventListener("click", async () => {
       case "Memory": {
         headerEl.appendChild(ItemCount(section.mems.length));
 
-        for (const mem of section.mems) {
+        const items: Node[] = [];
+        for (const [i, mem] of section.mems.entries()) {
           if (mem.is_error) {
-            sectionContents.appendChild(p(`ERROR (offset ${mem.offset}): ${mem.message}`));
+            items.push(WasmError(`ERROR (offset ${mem.offset}): ${mem.message}`));
           } else {
-            const initialStr = `${mem.initial} pages`;
-            const maxStr = mem.maximum !== undefined ? `, max ${mem.maximum} pages` : "";
-            const bitStr = mem.memory64 ? ", 64-bit" : ", 32-bit";
-            const sharedStr = mem.shared ? ", shared" : ", not shared";
-            sectionContents.appendChild(p(`Memory: ${initialStr}${maxStr}${bitStr}${sharedStr}`));
+            // TODO: memory names?
+            const details = E("div", []);
+            const memEl = E("div", ["item", "pa2", "flex", "flex-column", "g2"], [
+              E("div", ["b"], `Memory ${i}`),
+              details,
+            ]);
+            if (mem.initial === mem.maximum) {
+              details.appendChild(Tip({
+                text: `exactly ${mem.initial} pages`,
+                tooltip: `${bytesToString(mem.initial * BigInt(WASM_PAGE_SIZE))} (initial = max)`,
+              }));
+            } else {
+              details.appendChild(Tip({
+                text: `${mem.initial} pages`,
+                tooltip: bytesToString(mem.initial * BigInt(WASM_PAGE_SIZE)),
+              }));
+              if (mem.maximum) {
+                details.appendChild(N(", max "));
+                details.appendChild(Tip({
+                  text: `${mem.maximum} pages`,
+                  tooltip: bytesToString(mem.maximum * BigInt(WASM_PAGE_SIZE)),
+                }));
+              } else {
+                details.appendChild(N(", no max"));
+              }
+            }
+            details.appendChild(N(mem.memory64 ? ", 64-bit" : ", 32-bit"));
+            details.appendChild(N(mem.shared ? ", shared" : ", not shared"));
+            // TODO: list relevant data segments (WARNING! there can be a lot of them!)
+            items.push(memEl);
           }
         }
+        sectionContents.appendChild(Items(items));
       } break;
       case "Global": {
         headerEl.appendChild(ItemCount(section.globals.length));
@@ -397,9 +419,9 @@ doButton.addEventListener("click", async () => {
               segmentItem.appendChild(E("div", [], [
                 "initializes ", TableRef({ index: active.table_index }),
                 // TODO: offset expr (possibly specializing to i32.const)
-              ]))
+              ]));
             }
-            let itemNodes: Node[] = [];
+            const itemNodes: Node[] = [];
             switch (element.items.kind) {
               case "functions": {
                 for (const funcIdx of element.items.functions) {
