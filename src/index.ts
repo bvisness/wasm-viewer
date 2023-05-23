@@ -1,15 +1,18 @@
 import { parse } from "./parse";
 import wasmUrl from "../wasm-tools/pkg/wasm_viewer_bg.wasm";
-import wasmInit, { BinaryError, Export, Import, IndirectNamingResultArray, NamingResultArray } from "../wasm-tools/pkg";
-import { Module, WASM_PAGE_SIZE, bytesToString, funcTypeToString, memoryTypeToString, refTypeToString, valTypeToString } from "./types";
-import { E, F, FunctionRef, ItemCount, Items, KindChip, MemoryRef, N, RefTypeRef, Reference, TableRef, Tip, Toggle, TypeRef, ValTypeRef, WVNode, WasmError, addToggleEvents } from "./components";
+import wasmInit, { Export, Import, IndirectNamingResultArray, NamingResultArray } from "../wasm-tools/pkg";
+import { Module, WASM_PAGE_SIZE, bytesToString, funcTypeToString, memoryTypeToString } from "./types";
+import { E, F, FunctionRef, ItemCount, Items, KindChip, MemoryRef, N, RefTypeRef, TableRef, Tip, Toggle, TypeRef, ValTypeRef, WVNode, WasmError, addToggleEvents } from "./components";
 import { assertUnreachable } from "./util";
 
 async function init() {
   const url = wasmUrl as unknown as string;
   await wasmInit(fetch(url));
+  // TODO: disable UI until this completes
 }
-init();
+init().catch(e => {
+  throw e;
+});
 
 function el(id: string): HTMLElement {
   const element = document.getElementById(id);

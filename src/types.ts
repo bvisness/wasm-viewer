@@ -6,7 +6,6 @@ import type {
   Export,
   Function,
   Global,
-  Import,
   ImportSection as WasmImportSection,
   MemoryType,
   RefType,
@@ -16,7 +15,6 @@ import type {
   Name,
   FunctionBody,
   FuncType,
-  HeapType,
 } from "../wasm-tools/pkg/wasm_viewer";
 import { assertUnreachable } from "./util";
 
