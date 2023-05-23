@@ -140,30 +140,50 @@ export function valTypeToString(t: ValType): string {
   }
 }
 
-export function refTypeToString(t: RefType): string {
+export function refTypeToString(t: RefType, shorthand = true): string {
   switch (t.heap_type.kind) {
     case "typed_func":
       return t.nullable ? `(ref null ${t.heap_type.typed_func})` : `$(ref ${t.heap_type.typed_func})`;
     case "func":
-      return t.nullable ? "funcref" : "(ref func)";
+      return t.nullable
+        ? (shorthand ? "funcref" : "(ref null func)")
+        : "(ref func)";
     case "extern_":
-      return t.nullable ? "externref" : "(ref extern)";
+      return t.nullable
+        ? (shorthand ? "externref" : "(ref null extern)")
+        : "(ref extern)";
     case "any":
-      return t.nullable ? "anyref" : "(ref any)";
+      return t.nullable
+        ? (shorthand ? "anyref" : "(ref null any)")
+        : "(ref any)";
     case "none":
-      return t.nullable ? "noneref" : "(ref none)";
+      return t.nullable
+        ? (shorthand ? "noneref" : "(ref null none)")
+        : "(ref none)";
     case "noextern":
-      return t.nullable ? "noexternref" : "(ref noextern)";
+      return t.nullable
+        ? (shorthand ? "noexternref" : "(ref null noextern)")
+        : "(ref noextern)";
     case "nofunc":
-      return t.nullable ? "nofuncref" : "(ref nofunc)";
+      return t.nullable
+        ? (shorthand ? "nofuncref" : "(ref null nofunc)")
+        : "(ref nofunc)";
     case "eq":
-      return t.nullable ? "eqref" : "(ref eq)";
+      return t.nullable
+        ? (shorthand ? "eqref" : "(ref null eq)")
+        : "(ref eq)";
     case "struct_":
-      return t.nullable ? "structref" : "(ref struct)";
+      return t.nullable
+        ? (shorthand ? "structref" : "(ref null struct)")
+        : "(ref struct)";
     case "array":
-      return t.nullable ? "arrayref" : "(ref array)";
+      return t.nullable
+        ? (shorthand ? "arrayref" : "(ref null array)")
+        : "(ref array)";
     case "i31":
-      return t.nullable ? "i31ref" : "(ref i31)";
+      return t.nullable
+        ? (shorthand ? "i31ref" : "(ref null i31)")
+        : "(ref i31)";
     default:
       return assertUnreachable(t.heap_type);
   }

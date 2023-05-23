@@ -187,7 +187,13 @@ export function RefTypeRef(props: {
       ]);
     }
     default: {
-      return E("span", [], refTypeToString(props.type));
+      const displayType = refTypeToString(props.type, true);
+      const tooltipType = refTypeToString(props.type, false);
+      if (displayType !== tooltipType) {
+        return Tip({ text: displayType, tooltip: tooltipType });
+      } else {
+        return E("span", [], displayType);
+      }
     }
   }
 }
