@@ -1,4 +1,4 @@
-import { RefType } from "../wasm-tools/pkg/wasm_viewer";
+import { RefType, ValType } from "../wasm-tools/pkg/wasm_viewer";
 import { Module, funcTypeToString, refTypeToString, valTypeToString } from "./types";
 
 export type WVNode = Node | string;
@@ -160,6 +160,20 @@ export function FunctionRef(props: {
   });
 }
 
+export function ValTypeRef(props: {
+  module: Module;
+  type: ValType;
+}): Node {
+  switch (props.type.kind) {
+    case "ref_type": {
+      return RefTypeRef({ module: props.module, type: props.type.ref_type });
+    }
+    default: {
+      return E("span", [], valTypeToString(props.type));
+    }
+  }
+}
+
 export function RefTypeRef(props: {
   module: Module;
   type: RefType;
@@ -183,6 +197,15 @@ export function TableRef(props: {
 }): Node {
   return Reference({
     text: `table ${props.index}`,
+    // TODO: goto
+  });
+}
+
+export function MemoryRef(props: {
+  index: number;
+}): Node {
+  return Reference({
+    text: `memory ${props.index}`,
     // TODO: goto
   });
 }

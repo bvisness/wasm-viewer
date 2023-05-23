@@ -2,7 +2,7 @@ import { parse } from "./parse";
 import wasmUrl from "../wasm-tools/pkg/wasm_viewer_bg.wasm";
 import wasmInit, { BinaryError, Export, Import, IndirectNamingResultArray, NamingResultArray } from "../wasm-tools/pkg";
 import { Module, WASM_PAGE_SIZE, bytesToString, funcTypeToString, memoryTypeToString, refTypeToString, valTypeToString } from "./types";
-import { E, F, FunctionRef, ItemCount, Items, KindChip, N, RefTypeRef, Reference, TableRef, Tip, Toggle, TypeRef, WVNode, WasmError, addToggleEvents } from "./components";
+import { E, F, FunctionRef, ItemCount, Items, KindChip, MemoryRef, N, RefTypeRef, Reference, TableRef, Tip, Toggle, TypeRef, ValTypeRef, WVNode, WasmError, addToggleEvents } from "./components";
 import { assertUnreachable } from "./util";
 
 async function init() {
@@ -324,28 +324,24 @@ doButton.addEventListener("click", async () => {
       case "Global": {
         headerEl.appendChild(ItemCount(section.globals.length));
 
+        const items: Node[] = [];
         for (const [i, global] of section.globals.entries()) {
           if (global.is_error) {
-            sectionContents.appendChild(p(`ERROR (offset ${global.offset}): ${global.message}`));
+            items.push(WasmError(`ERROR (offset ${global.offset}): ${global.message}`));
           } else {
-            const parts = [];
-            parts.push(global.ty.content_type.kind);
-            if (global.ty.content_type.kind === "ref_type") {
-              // const refType = global.ty.content_type.ref_type!;
-              // if (refType.nullable) {
-              //   parts.push("nullable");
-              // }
-              // parts.push(refType.kind);
-              // if (refType.kind === "type") {
-              //   parts.push(`type ${refType.type_index}`);
-              // }
-            }
-            if (global.ty.mutable) {
-              parts.push("mutable");
-            }
-            sectionContents.appendChild(p(`Global ${i}: ${parts.join(", ")}`));
+            // TODO: global names
+            // TODO: global init expr
+            items.push(E("div", ["item", "pa2", "flex", "flex-column", "g2"], [
+              E("div", ["b"], `Global ${i}`),
+              E("div", [], [
+                global.ty.mutable ? "mutable " : "immutable ",
+                ValTypeRef({ module: module, type: global.ty.content_type }),
+              ]),
+            ]));
           }
         }
+        sectionContents.appendChild(Items(items));
+        sectionEl.classList.remove("open");
       } break;
       case "Export": {
         headerEl.appendChild(ItemCount(section.exports.length));
@@ -372,7 +368,7 @@ doButton.addEventListener("click", async () => {
               details = `global ${exp.index}`;
             } break;
             case "memory": {
-              details = `memory ${exp.index}`;
+              details = MemoryRef({ index: exp.index });
             } break;
             case "table": {
               details = `table ${exp.index}`;

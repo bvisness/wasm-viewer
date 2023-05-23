@@ -135,7 +135,7 @@ export class Module {
 
 export function valTypeToString(t: ValType): string {
   switch (t.kind) {
-    case "ref_type": return refTypeToString(t.ref_type!);
+    case "ref_type": return refTypeToString(t.ref_type);
     default: return t.kind;
   }
 }
