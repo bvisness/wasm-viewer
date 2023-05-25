@@ -1,8 +1,8 @@
 import { parse } from "./parse";
 import wasmUrl from "../wasm-tools/pkg/wasm_viewer_bg.wasm";
-import wasmInit, { Export, Import, IndirectNamingResultArray, NamingResultArray } from "../wasm-tools/pkg";
-import { Module, WASM_PAGE_SIZE, bytesToString, funcTypeToString, memoryTypeToString } from "./types";
-import { E, F, FunctionRef, ItemCount, Items, KindChip, MemoryRef, N, RefTypeRef, TableRef, Tip, Toggle, TypeRef, ValTypeRef, WVNode, WasmError, addToggleEvents } from "./components";
+import wasmInit, { Export, Import, IndirectNamingResultArray } from "../wasm-tools/pkg";
+import { Module, Section, WASM_PAGE_SIZE, bytesToString, funcTypeToString, memoryTypeToString } from "./types";
+import { DataSegmentRef, E, ElementSegmentRef, F, FunctionRef, GlobalRef, ItemCount, Items, KindChip, MemoryRef, N, NameSection, RefTypeRef, TableRef, Tip, Toggle, TypeRef, ValTypeRef, WVNode, WasmError, addToggleEvents } from "./components";
 import { assertUnreachable } from "./util";
 
 async function init() {
@@ -53,6 +53,27 @@ doButton.addEventListener("click", async () => {
     el.innerText = msg;
     return el;
   }
+  function indirectNameMap(name: string, map: IndirectNamingResultArray) {
+    return Toggle({
+      title: name,
+      children: map.map(outer => {
+        if (outer.is_error) {
+          return WasmError(`ERROR (offset ${outer.offset}): ${outer.message}`);
+        } else {
+          return Toggle({
+            title: `${outer.index}`,
+            children: outer.names.map(inner => {
+              if (inner.is_error) {
+                return WasmError(`ERROR (offset ${inner.offset}): ${inner.message}`);
+              } else {
+                return p(`${name} ${outer.index}.${inner.index}: "${inner.name}"`);
+              }
+            }),
+          });
+        }
+      }),
+    });
+  }
 
   const wasmFile = filePicker.files[0];
   module = await parse(wasmFile.stream());
@@ -62,11 +83,11 @@ doButton.addEventListener("click", async () => {
     const sectionContents = E("div", ["toggle-contents"], []);
 
     const headerEl = E("div", ["toggle-title", "ma0", "mt2", "flex", "g2"], [
-      E("b", [], `${section.type} Section`),
+      E("b", [], sectionName(section)),
     ]);
-    const sectionEl = E("div", ["section", "toggle", "open", "flex", "items-start"], [
+    const sectionEl = E("div", ["section", "toggle", "open", "flex", "items-start", "overflow-hidden"], [
       E("div", ["toggle-toggler", "pa2"], ">"),
-      E("div", ["flex-grow-1", "flex", "flex-column", "g2"], [
+      E("div", ["flex-grow-1", "mw-100", "flex", "flex-column", "g2", "overflow-hidden"], [
         headerEl,
         sectionContents,
       ]),
@@ -74,78 +95,83 @@ doButton.addEventListener("click", async () => {
 
     switch (section.type) {
       case "Custom": {
-        sectionContents.appendChild(p(`"${section.custom.name}": ${section.custom.data.length} bytes`));
+        const customItem = E("div", ["item", "pa2", "flex", "flex-column"]);
+
         if (section.names) {
           for (const name of section.names) {
             if (name.is_error) {
-              sectionContents.appendChild(p(`ERROR (offset ${name.offset}): ${name.message}`));
+              customItem.appendChild(p(`ERROR (offset ${name.offset}): ${name.message}`));
             } else {
-              sectionContents.appendChild(p("Names:"));
-
-              const nameMap = (name: string, map: NamingResultArray) => {
-                for (const n of map) {
-                  if (n.is_error) {
-                    sectionContents.appendChild(p(`ERROR (offset ${n.offset}): ${n.message}`));
-                  } else {
-                    sectionContents.appendChild(p(`${name} ${n.index}: "${n.name}"`));
-                  }
-                }
-              };
-
-              const indirectNameMap = (name: string, map: IndirectNamingResultArray) => {
-                for (const outer of map) {
-                  if (outer.is_error) {
-                    sectionContents.appendChild(p(`ERROR (offset ${outer.offset}): ${outer.message}`));
-                  } else {
-                    for (const inner of outer.names) {
-                      if (inner.is_error) {
-                        sectionContents.appendChild(p(`ERROR (offset ${inner.offset}): ${inner.message}`));
-                      } else {
-                        sectionContents.appendChild(p(`${name} ${outer.index}.${inner.index}: "${inner.name}"`));
-                      }
-                    }
-                  }
-                }
-              };
-
               switch (name.kind) {
                 case "module": {
-                  sectionContents.appendChild(p(`Module: "${name.module}"`));
+                  customItem.appendChild(p(`Module: "${name.module}"`));
                 } break;
                 case "function": {
-                  nameMap("Function", name.function);
+                  customItem.appendChild(NameSection({
+                    title: "Functions",
+                    names: name.function,
+                    ref: n => FunctionRef({ index: n.index }),
+                  }));
                 } break;
                 case "local": {
-                  indirectNameMap("Local", name.local);
+                  customItem.appendChild(indirectNameMap("Local", name.local));
                 } break;
                 case "label": {
-                  indirectNameMap("Label", name.label);
+                  customItem.appendChild(indirectNameMap("Label", name.label));
                 } break;
                 case "type_": {
-                  nameMap("Type", name.type_);
+                  customItem.appendChild(NameSection({
+                    title: "Types",
+                    names: name.type_,
+                    ref: n => TypeRef({ module: module, index: n.index }),
+                  }));
                 } break;
                 case "table": {
-                  nameMap("Table", name.table);
+                  customItem.appendChild(NameSection({
+                    title: "Tables",
+                    names: name.table,
+                    ref: n => TableRef({ index: n.index }),
+                  }));
                 } break;
                 case "memory": {
-                  nameMap("Memory", name.memory);
+                  customItem.appendChild(NameSection({
+                    title: "Memories",
+                    names: name.memory,
+                    ref: n => MemoryRef({ index: n.index }),
+                  }));
                 } break;
                 case "global": {
-                  nameMap("Global", name.global);
+                  customItem.appendChild(NameSection({
+                    title: "Globals",
+                    names: name.global,
+                    ref: n => GlobalRef({ index: n.index }),
+                  }));
                 } break;
                 case "element": {
-                  nameMap("Element", name.element);
+                  customItem.appendChild(NameSection({
+                    title: "Element Segments",
+                    names: name.element,
+                    ref: n => ElementSegmentRef({ index: n.index }),
+                  }));
                 } break;
                 case "data": {
-                  nameMap("Data", name.data);
+                  customItem.appendChild(NameSection({
+                    title: "Data Segments",
+                    names: name.data,
+                    ref: n => DataSegmentRef({ index: n.index }),
+                  }));
                 } break;
                 case "unknown": {
-                  sectionContents.appendChild(p(`Unknown name type ${name.unknown.ty}: ${name.unknown.data.length} bytes`));
+                  customItem.appendChild(p(`Unknown name type ${name.unknown.ty}: ${name.unknown.data.length} bytes`));
                 } break;
               }
             }
           }
+        } else {
+          customItem.appendChild(E("div", [], bytesToString(section.custom.data.byteLength)));
+          // TODO: hex viewer for custom section data
         }
+        sectionContents.appendChild(customItem);
       } break;
       case "Type": {
         headerEl.appendChild(ItemCount(section.types.length));
@@ -344,7 +370,6 @@ doButton.addEventListener("click", async () => {
           }
         }
         sectionContents.appendChild(Items(items));
-        sectionEl.classList.remove("open");
       } break;
       case "Export": {
         headerEl.appendChild(ItemCount(section.exports.length));
@@ -468,19 +493,32 @@ doButton.addEventListener("click", async () => {
       case "Data": {
         headerEl.appendChild(ItemCount(section.datas.length));
 
+        const items: Node[] = [];
         for (const [i, data] of section.datas.entries()) {
           if (data.is_error) {
-            sectionContents.appendChild(p(`ERROR (offset ${data.offset}): ${data.message}`));
+            items.push(WasmError(`ERROR (offset ${data.offset}): ${data.message}`));
           } else {
-            const parts = [];
-            parts.push(data.kind.kind);
-            if (data.kind.kind === "active") {
-              parts.push(`memory ${data.kind.active.memory_index}`);
-            }
-            parts.push(`${data.data.length} bytes`);
-            sectionContents.appendChild(p(`Data ${i}: ${parts.join(", ")}`));
+            // TODO: data names
+            // TODO: active data offset expr
+            // TODO: locations of referencing memory.init instructions
+            items.push(E("div", ["item", "pa2", "flex", "flex-column", "g2"], [
+              E("div", ["b"], `Data Segment ${i}`),
+              E("div", [], data.kind.kind === "active"
+                ? ["active, initializes ", MemoryRef({ index: data.kind.active.memory_index })]
+                : ["passive"]
+              ),
+              // TODO: hex viewer for data
+              // Toggle({
+              //   title: E("div", [], [
+              //     E("b", ["mr2"], "Data"),
+              //     E("span", [], `(${bytesToString(data.data.byteLength)})`),
+              //   ]),
+              //   children: E("div", ["flex", "flex-column", "g2"], itemNodes),
+              // }),
+            ]));
           }
         }
+        sectionContents.appendChild(Items(items));
       } break;
       case "DataCount": {
         sectionContents.appendChild(p(`Num data segments: ${section.numDataSegments}`));
@@ -491,5 +529,16 @@ doButton.addEventListener("click", async () => {
     sections.appendChild(sectionEl);
   }
 });
+
+function sectionName(section: Section): string {
+  switch (section.type) {
+    case "Custom":
+      return `Custom Section "${section.custom.name}"`;
+    case "DataCount":
+      return "Data Count Section";
+    default:
+      return `${section.type} Section`;
+  }
+}
 
 export {};

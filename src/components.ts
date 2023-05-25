@@ -1,4 +1,4 @@
-import { RefType, ValType } from "../wasm-tools/pkg/wasm_viewer";
+import { Naming, NamingResultArray, RefType, ValType } from "../wasm-tools/pkg/wasm_viewer";
 import { Module, funcTypeToString, refTypeToString, valTypeToString } from "./types";
 
 export type WVNode = Node | string;
@@ -72,24 +72,19 @@ export function Toggle(props: {
   item?: boolean;
   children: WVNodes;
 }): Node {
-  const outer = document.createElement("div");
-  outer.classList.add("toggle", "flex", "items-start", "br1");
+  const outer = E("div", ["toggle", "flex", "items-start", "br1", "overflow-hidden"]);
   if (props.item) {
     outer.classList.add("item");
   }
 
-  const toggler = document.createElement("div");
-  toggler.innerText = ">";
-  toggler.classList.add("toggle-toggler", "pa2");
+  const toggler = E("div", ["toggle-toggler", "pa2"], ">");
   outer.appendChild(toggler);
 
   const titleEl = E("div", ["toggle-title", "pv2", "pr2"], props.title);
-  const inner = E("div", ["flex", "flex-column", "flex-grow-1"], titleEl);
+  const inner = E("div", ["flex", "flex-column", "flex-grow-1", "overflow-hidden"], titleEl);
   outer.appendChild(inner);
 
-  const contents = document.createElement("div");
-  contents.classList.add("toggle-contents", "pb2", "pr2");
-  addChildren(contents, props.children);
+  const contents = E("div", ["toggle-contents", "pb2", "pr2", "overflow-hidden"], props.children);
   inner.appendChild(contents);
 
   addToggleEvents(outer);
@@ -216,6 +211,33 @@ export function MemoryRef(props: {
   });
 }
 
+export function GlobalRef(props: {
+  index: number;
+}): Node {
+  return Reference({
+    text: `global ${props.index}`,
+    // TODO: goto
+  });
+}
+
+export function ElementSegmentRef(props: {
+  index: number;
+}): Node {
+  return Reference({
+    text: `element segment ${props.index}`,
+    // TODO: goto
+  });
+}
+
+export function DataSegmentRef(props: {
+  index: number;
+}): Node {
+  return Reference({
+    text: `data segment ${props.index}`,
+    // TODO: goto
+  });
+}
+
 export function Tip(props: {
   text: string;
   tooltip: string;
@@ -224,4 +246,24 @@ export function Tip(props: {
     props.text,
     Tooltip(props.tooltip),
   ]);
+}
+
+export function NameSection(props: {
+  title: string;
+  names: NamingResultArray;
+  ref: (n: Naming) => WVNode;
+}): Node {
+  return Toggle({
+    title: E("div", ["b"], props.title),
+    children: E("div", ["flex", "flex-column", "g2", "overflow-hidden"], props.names.map(n => {
+      if (n.is_error) {
+        return WasmError(`ERROR (offset ${n.offset}): ${n.message}`);
+      } else {
+        return E("div", ["flex", "flex-column", "g1", "overflow-hidden"], [
+          E("div", ["overflow-x-auto"], n.name),
+          E("div", ["f--small"], props.ref(n)),
+        ]);
+      }
+    })),
+  });
 }

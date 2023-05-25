@@ -215,15 +215,18 @@ export function memoryTypeToString(mem: MemoryType): string {
 
 export const WASM_PAGE_SIZE = 65536;
 
-export function bytesToString(numBytes: bigint): string {
+// TODO: do the math without truncating
+export function bytesToString(numBytes: number | bigint): string {
+  const _numBytes = BigInt(numBytes);
   const fmt = new Intl.NumberFormat();
+  let shortened: string | undefined;
   if (numBytes >= 1024 * 1024 * 1024) {
-    return `${fmt.format(numBytes / BigInt(1024 * 1024 * 1024))} GiB`;
+    shortened = `${fmt.format(_numBytes / BigInt(1024 * 1024 * 1024))} GiB`;
   } else if (numBytes >= 1024 * 1024) {
-    return `${fmt.format(numBytes / BigInt(1024 * 1024))} MiB`;
+    shortened = `${fmt.format(_numBytes / BigInt(1024 * 1024))} MiB`;
   } else if (numBytes >= 1024) {
-    return `${fmt.format(numBytes / BigInt(1024))} KiB`;
-  } else {
-    return `${fmt.format(numBytes)} bytes`;
+    shortened = `${fmt.format(_numBytes / BigInt(1024))} KiB`;
   }
+
+  return `${fmt.format(_numBytes)} bytes${shortened ? ` (${shortened})` : ""}`;
 }
