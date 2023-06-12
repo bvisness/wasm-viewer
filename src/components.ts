@@ -1,5 +1,5 @@
 import { Naming, NamingResultArray, RefType, ValType } from "../wasm-tools/pkg/wasm_viewer";
-import { Module, funcTypeToString, refTypeToString, valTypeToString } from "./types";
+import { Module, funcTypeToString, globalTypeToString, refTypeToString, valTypeToString } from "./types";
 
 export type WVNode = Node | string;
 export type WVNodes = WVNode | WVNode[];
@@ -147,12 +147,22 @@ export function TypeRef(props: {
 }
 
 export function FunctionRef(props: {
+  module: Module;
   index: number;
 }): Node {
-  return Reference({
-    text: `function ${props.index}`,
-    // TODO: goto
-  });
+  const typeIndex = props.module.functionType(props.index);
+  if (typeIndex !== undefined) {
+    const type = props.module.type(typeIndex)?.func;
+    return Reference({
+      text: `function ${props.index}`,
+      tooltip: type ? funcTypeToString(type) : `type ${typeIndex} (invalid)`,
+      // TODO: goto
+    });
+  } else {
+    return Reference({
+      text: `function ${props.index} (invalid)`,
+    });
+  }
 }
 
 export function ValTypeRef(props: {
@@ -212,12 +222,22 @@ export function MemoryRef(props: {
 }
 
 export function GlobalRef(props: {
+  module: Module;
   index: number;
 }): Node {
-  return Reference({
-    text: `global ${props.index}`,
-    // TODO: goto
-  });
+  // TODO: The type we discover may be invalid if there were errors decoding imports.
+  const type = props.module.globalType(props.index);
+  if (type) {
+    return Reference({
+      text: `global ${props.index}`,
+      tooltip: globalTypeToString(type),
+      // TODO: goto
+    });
+  } else {
+    return Reference({
+      text: `global ${props.index} (invalid)`,
+    });
+  }
 }
 
 export function ElementSegmentRef(props: {

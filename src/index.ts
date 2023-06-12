@@ -85,7 +85,7 @@ doButton.addEventListener("click", async () => {
     const headerEl = E("div", ["toggle-title", "ma0", "mt2", "flex", "g2"], [
       E("b", [], sectionName(section)),
     ]);
-    const sectionEl = E("div", ["section", "toggle", "open", "flex", "items-start", "overflow-hidden"], [
+    const sectionEl = E("div", ["section", "toggle", "flex", "items-start", "overflow-hidden"], [
       E("div", ["toggle-toggler", "pa2"], ">"),
       E("div", ["flex-grow-1", "mw-100", "flex", "flex-column", "g2", "overflow-hidden"], [
         headerEl,
@@ -98,6 +98,8 @@ doButton.addEventListener("click", async () => {
         const customItem = E("div", ["item", "pa2", "flex", "flex-column"]);
 
         if (section.names) {
+          customItem.classList.remove("pa2");
+          customItem.classList.add("ph2");
           for (const name of section.names) {
             if (name.is_error) {
               customItem.appendChild(p(`ERROR (offset ${name.offset}): ${name.message}`));
@@ -110,7 +112,7 @@ doButton.addEventListener("click", async () => {
                   customItem.appendChild(NameSection({
                     title: "Functions",
                     names: name.function,
-                    ref: n => FunctionRef({ index: n.index }),
+                    ref: n => FunctionRef({ module: module, index: n.index }),
                   }));
                 } break;
                 case "local": {
@@ -144,7 +146,7 @@ doButton.addEventListener("click", async () => {
                   customItem.appendChild(NameSection({
                     title: "Globals",
                     names: name.global,
-                    ref: n => GlobalRef({ index: n.index }),
+                    ref: n => GlobalRef({ module: module, index: n.index }),
                   }));
                 } break;
                 case "element": {
@@ -194,7 +196,6 @@ doButton.addEventListener("click", async () => {
           }
         }
         sectionContents.appendChild(Items(items));
-        sectionEl.classList.remove("open");
       } break;
       case "Import": {
         headerEl.appendChild(ItemCount(section.imports.imports.length));
@@ -285,7 +286,6 @@ doButton.addEventListener("click", async () => {
           }
         }
         sectionContents.appendChild(Items(items));
-        sectionEl.classList.remove("open");
       } break;
       case "Table": {
         headerEl.appendChild(ItemCount(section.tables.length));
@@ -390,16 +390,16 @@ doButton.addEventListener("click", async () => {
             // TODO: names of things
             // TODO: references to each thing
             case "func": {
-              details = FunctionRef({ index: exp.index });
+              details = FunctionRef({ module: module, index: exp.index });
             } break;
             case "global": {
-              details = `global ${exp.index}`;
+              details = GlobalRef({ module: module, index: exp.index });
             } break;
             case "memory": {
               details = MemoryRef({ index: exp.index });
             } break;
             case "table": {
-              details = `table ${exp.index}`;
+              details = TableRef({ index: exp.index });
             } break;
             case "tag": {
               details = `tag ${exp.index}`;
@@ -449,7 +449,7 @@ doButton.addEventListener("click", async () => {
             switch (element.items.kind) {
               case "functions": {
                 for (const funcIdx of element.items.functions) {
-                  itemNodes.push(E("div", [], FunctionRef({ index: funcIdx })));
+                  itemNodes.push(E("div", [], FunctionRef({ module: module, index: funcIdx })));
                 }
               } break;
               case "expressions": {

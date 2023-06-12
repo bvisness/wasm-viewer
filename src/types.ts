@@ -15,6 +15,8 @@ import type {
   Name,
   FunctionBody,
   FuncType,
+  GlobalType,
+  TableType,
 } from "../wasm-tools/pkg/wasm_viewer";
 import { assertUnreachable } from "./util";
 
@@ -100,11 +102,45 @@ export type Section =
     | DataSection
     | DataCountSection;
 
+export interface ImportedData {
+  funcs: Function["type_idx"][];
+  tables: TableType[];
+  memories: MemoryType[];
+  globals: GlobalType[];
+}
+
 export class Module {
   sections: Section[];
+  imported: ImportedData;
 
   constructor(sections: Section[]) {
     this.sections = sections;
+    this.imported = {
+      funcs: [],
+      tables: [],
+      memories: [],
+      globals: [],
+    };
+
+    for (const imp of this.section("Import")?.imports.imports ?? []) {
+      if (imp.is_error) {
+        continue;
+      }
+      switch (imp.ty.kind) {
+        case "func": {
+          this.imported.funcs.push(imp.ty.func);
+        } break;
+        case "table": {
+          this.imported.tables.push(imp.ty.table);
+        } break;
+        case "memory": {
+          this.imported.memories.push(imp.ty.memory);
+        } break;
+        case "global": {
+          this.imported.globals.push(imp.ty.global);
+        } break;
+      }
+    }
   }
 
   section<Type extends Section["type"]>(type: Type): (Section & { type: Type }) | undefined {
@@ -128,6 +164,26 @@ export class Module {
     }
 
     return undefined;
+  }
+
+  functionType(index: number): Function["type_idx"] | undefined {
+    if (index < this.imported.funcs.length) {
+      return this.imported.funcs[index];
+    }
+    const func = this.section("Function")?.functions[index];
+    if (!func?.is_error) {
+      return func?.type_idx;
+    }
+  }
+
+  globalType(index: number): GlobalType | undefined {
+    if (index < this.imported.globals.length) {
+      return this.imported.globals[index];
+    }
+    const global = this.section("Global")?.globals[index];
+    if (!global?.is_error) {
+      return global?.ty;
+    }
   }
 }
 
@@ -211,6 +267,10 @@ export function memoryTypeToString(mem: MemoryType): string {
   parts.push(mem.memory64 ? "64-bit" : "32-bit");
   parts.push(mem.shared ? "shared" : "not shared");
   return parts.join(", ");
+}
+
+export function globalTypeToString(ty: GlobalType): string {
+  return `${ty.mutable ? "mutable" : "immutable"} ${valTypeToString(ty.content_type)}`;
 }
 
 export const WASM_PAGE_SIZE = 65536;
