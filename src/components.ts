@@ -72,7 +72,7 @@ export function Toggle(props: {
   item?: boolean;
   children: WVNodes;
 }): Node {
-  const outer = E("div", ["toggle", "flex", "items-start", "br1", "overflow-hidden"]);
+  const outer = E("div", ["toggle", "flex", "items-start", "br1"]);
   if (props.item) {
     outer.classList.add("item");
   }
@@ -81,10 +81,10 @@ export function Toggle(props: {
   outer.appendChild(toggler);
 
   const titleEl = E("div", ["toggle-title", "pv2", "pr2"], props.title);
-  const inner = E("div", ["flex", "flex-column", "flex-grow-1", "overflow-hidden"], titleEl);
+  const inner = E("div", ["flex", "flex-column", "flex-grow-1"], titleEl);
   outer.appendChild(inner);
 
-  const contents = E("div", ["toggle-contents", "pb2", "pr2", "overflow-hidden"], props.children);
+  const contents = E("div", ["toggle-contents", "pb2", "pr2"], props.children);
   inner.appendChild(contents);
 
   addToggleEvents(outer);
@@ -149,15 +149,27 @@ export function TypeRef(props: {
 export function FunctionRef(props: {
   module: Module;
   index: number;
+  hideName?: boolean;
 }): Node {
   const typeIndex = props.module.functionType(props.index);
   if (typeIndex !== undefined) {
     const type = props.module.type(typeIndex)?.func;
-    return Reference({
-      text: `function ${props.index}`,
-      tooltip: type ? funcTypeToString(type) : `type ${typeIndex} (invalid)`,
-      // TODO: goto
-    });
+    const typeStr = type ? funcTypeToString(type) : `type ${typeIndex} (invalid)`;
+
+    const name = props.module.names.funcs[props.index];
+    if (name && !props.hideName) {
+      return Reference({
+        text: `function ${name}`,
+        tooltip: `function ${props.index}, ${typeStr}`,
+        // TODO: goto
+      });
+    } else {
+      return Reference({
+        text: `function ${props.index}`,
+        tooltip: typeStr,
+        // TODO: goto
+      });
+    }
   } else {
     return Reference({
       text: `function ${props.index} (invalid)`,

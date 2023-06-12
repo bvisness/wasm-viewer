@@ -2,7 +2,7 @@ import { parse } from "./parse";
 import wasmUrl from "../wasm-tools/pkg/wasm_viewer_bg.wasm";
 import wasmInit, { Export, Import, IndirectNamingResultArray } from "../wasm-tools/pkg";
 import { Module, Section, WASM_PAGE_SIZE, bytesToString, funcTypeToString, memoryTypeToString } from "./types";
-import { DataSegmentRef, E, ElementSegmentRef, F, FunctionRef, GlobalRef, ItemCount, Items, KindChip, MemoryRef, N, NameSection, RefTypeRef, TableRef, Tip, Toggle, TypeRef, ValTypeRef, WVNode, WasmError, addToggleEvents } from "./components";
+import { DataSegmentRef, E, ElementSegmentRef, F, FunctionRef, GlobalRef, ItemCount, Items, KindChip, MemoryRef, N, NameSection, RefTypeRef, Reference, TableRef, Tip, Toggle, TypeRef, ValTypeRef, WVNode, WasmError, addToggleEvents } from "./components";
 import { assertUnreachable } from "./util";
 
 async function init() {
@@ -43,13 +43,9 @@ doButton.addEventListener("click", async () => {
     return;
   }
 
+  // TODO: get rid of these
   function p(msg: string) {
     const el = document.createElement("p");
-    el.innerText = msg;
-    return el;
-  }
-  function plain(type: string, msg: string) {
-    const el = document.createElement(type);
     el.innerText = msg;
     return el;
   }
@@ -77,6 +73,9 @@ doButton.addEventListener("click", async () => {
 
   const wasmFile = filePicker.files[0];
   module = await parse(wasmFile.stream());
+
+  // @ts-expect-error I am not allowed to debug my own code 🤡
+  window.currentModule = module;
 
   sections.innerHTML = "";
   for (const section of module.sections) {
@@ -274,13 +273,17 @@ doButton.addEventListener("click", async () => {
         headerEl.appendChild(ItemCount(section.functions.length));
 
         const items: Node[] = [];
+        if (module.imported.funcs.length > 0) {
+          items.push(E("div", ["i", "f--small"], `Functions 0 through ${module.imported.funcs.length - 1} are imported from the host.`));
+        }
         for (const [i, func] of section.functions.entries()) {
           if (func.is_error) {
             items.push(WasmError(`ERROR (offset ${func.offset}): ${func.message}`));
           } else {
-            // TODO: function names
+            const funcIndex = module.imported.funcs.length + i;
+            const name = module.names.funcs[funcIndex];
             items.push(E("div", ["item", "pa2", "flex", "flex-column", "g2"], [
-              E("div", ["b"], `Function ${i}`),
+              E("div", ["b"], name ? `Function ${funcIndex}: ${name}` : `Function ${funcIndex}`),
               E("div", [], TypeRef({ module: module, index: func.type_idx })),
             ]));
           }
@@ -390,7 +393,7 @@ doButton.addEventListener("click", async () => {
             // TODO: names of things
             // TODO: references to each thing
             case "func": {
-              details = FunctionRef({ module: module, index: exp.index });
+              details = FunctionRef({ module: module, index: exp.index, hideName: true });
             } break;
             case "global": {
               details = GlobalRef({ module: module, index: exp.index });
@@ -473,13 +476,16 @@ doButton.addEventListener("click", async () => {
       case "Code": {
         headerEl.appendChild(ItemCount(section.funcs.length));
 
-        sectionContents.appendChild(p(`Number of functions: ${section.funcs.length}`));
+        const items: Node[] = [];
+
+        if (module.imported.funcs.length > 0) {
+          items.push(E("div", ["i", "f--small"], `Functions 0 through ${module.imported.funcs.length - 1} are imported from the host.`));
+        }
 
         for (const [i, func] of section.funcs.entries()) {
           if (func.is_error) {
-            sectionContents.appendChild(p(`ERROR (offset ${func.offset}): ${func.message}`));
+            items.push(WasmError(`ERROR (offset ${func.offset}): ${func.message}`));
           } else {
-            sectionContents.appendChild(plain("h3", `Func ${i}`));
             // for (const op of func.ops) {
             //   if (op.is_error) {
             //     sectionEl.appendChild(p(`ERROR (offset ${op.offset}): ${op.message}`));
@@ -487,7 +493,25 @@ doButton.addEventListener("click", async () => {
             //     sectionEl.appendChild(p(op.name));
             //   }
             // }
+            const funcIndex = module.imported.funcs.length + i;
+            const name = module.names.funcs[funcIndex];
+            const funcTypeIndex = module.functionType(funcIndex);
+            items.push(Toggle({
+              title: E("div", ["flex", "flex-column", "g1"], [
+                E("b", [], name ? `Function ${funcIndex}: ${name}` : `Function ${funcIndex}`),
+                E("div", ["f--small"], [
+                  funcTypeIndex !== undefined
+                    ? TypeRef({ module: module, index: funcTypeIndex })
+                    : Reference({ text: "unknown type" }),
+                ]),
+              ]),
+              item: true,
+              children: [
+
+              ],
+            }));
           }
+          sectionContents.appendChild(Items(items));
         }
       } break;
       case "Data": {

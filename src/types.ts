@@ -17,6 +17,7 @@ import type {
   FuncType,
   GlobalType,
   TableType,
+  NamingResultArray,
 } from "../wasm-tools/pkg/wasm_viewer";
 import { assertUnreachable } from "./util";
 
@@ -109,11 +110,26 @@ export interface ImportedData {
   globals: GlobalType[];
 }
 
+export interface Names {
+  module: string | undefined;
+  funcs: (string | undefined)[];
+}
+
 export class Module {
   sections: Section[];
   imported: ImportedData;
+  names: Names;
 
   constructor(sections: Section[]) {
+    function nameMap(arr: (string | undefined)[], names: NamingResultArray) {
+      for (const name of names) {
+        if (name.is_error) {
+          continue;
+        }
+        arr[name.index] = name.name;
+      }
+    }
+
     this.sections = sections;
     this.imported = {
       funcs: [],
@@ -121,7 +137,12 @@ export class Module {
       memories: [],
       globals: [],
     };
+    this.names = {
+      module: undefined,
+      funcs: [],
+    };
 
+    // Save imports and their names
     for (const imp of this.section("Import")?.imports.imports ?? []) {
       if (imp.is_error) {
         continue;
@@ -129,6 +150,7 @@ export class Module {
       switch (imp.ty.kind) {
         case "func": {
           this.imported.funcs.push(imp.ty.func);
+          this.names.funcs.push(imp.name);
         } break;
         case "table": {
           this.imported.tables.push(imp.ty.table);
@@ -139,6 +161,45 @@ export class Module {
         case "global": {
           this.imported.globals.push(imp.ty.global);
         } break;
+      }
+    }
+
+    // Initialize name arrays to the correct lengths after we know how many imports there were
+    this.names.funcs.length += this.section("Function")?.functions.length ?? 0;
+    // TODO: All other name types
+
+    // Get names from exports
+    for (const exp of this.section("Export")?.exports ?? []) {
+      if (exp.is_error) {
+        continue;
+      }
+      switch (exp.kind.kind) {
+        case "func": {
+          if (!this.names.funcs[exp.index]) {
+            this.names.funcs[exp.index] = exp.name;
+          }
+        } break;
+        // TODO: All export types
+        // default:
+        //   return assertUnreachable(exp.kind.kind);
+      }
+    }
+
+    // Finally, stomp on all existing names with the name section
+    for (const name of this.section("Custom")?.names ?? []) {
+      if (name.is_error) {
+        continue;
+      }
+      switch (name.kind) {
+        case "module": {
+          this.names.module = name.module;
+        } break;
+        case "function": {
+          nameMap(this.names.funcs, name.function);
+        } break;
+        // TODO: All name types
+        // default:
+        //   return assertUnreachable(name.kind);
       }
     }
   }
@@ -170,9 +231,14 @@ export class Module {
     if (index < this.imported.funcs.length) {
       return this.imported.funcs[index];
     }
-    const func = this.section("Function")?.functions[index];
-    if (!func?.is_error) {
-      return func?.type_idx;
+    const innerIndex = index - this.imported.funcs.length;
+    const func = this.section("Function")?.functions[innerIndex];
+    if (!func) {
+      console.error(`No function with index ${index} (inner index ${innerIndex})`);
+      return undefined;
+    }
+    if (!func.is_error) {
+      return func.type_idx;
     }
   }
 
