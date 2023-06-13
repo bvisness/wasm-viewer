@@ -1,3 +1,20 @@
+.wv-resizable {
+  flex-basis: 1px;
+  /* flex-grow must be directly set on the element */
+  flex-shrink: 1;
+  position: relative;
+}
+
+.wv-resizable > * {
+  overflow: hidden;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+
+
 .wv-pane {
   display: flex;
   flex-direction: column;
@@ -6,6 +23,11 @@
 .wv-tabs {
   flex-shrink: 0;
   display: flex;
+  z-index: 1;
+}
+
+.wv-tab-dummy {
+  visibility: hidden;
 }
 
 .wv-pane-container {
@@ -44,20 +66,5 @@
   left: 0;
   width: 100%;
   height: 100%;
-}
-
-.wv-resizable {
-  flex-basis: 1px;
-  /* flex-grow must be directly set on the element */
-  flex-shrink: 1;
-  position: relative;
-}
-
-.wv-resizable > * {
-  overflow: hidden;
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
+  background-color: var(--content-background);
 }

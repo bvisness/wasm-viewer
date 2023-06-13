@@ -1,4 +1,4 @@
-import { E } from "./components";
+import { E, WVNode, WVNodes } from "./components";
 
 // Nested pane containers will always have the opposite direction of their
 // parent. This avoids confusing problems with sizing.
@@ -18,22 +18,36 @@ export interface Pane {
 }
 
 export interface Tab {
-  name: string;
+  name: WVNode;
   content: HTMLElement;
+  onClose: (() => void)[];
 }
 
-export function newTab(name: string): Tab {
+export function newTab(name: HTMLElement, opts: {
+  content?: WVNodes;
+  onClose?: () => void;
+}): Tab {
   return {
     name: name,
-    content: E("div", []),
+    content: E("div", [], opts.content),
+    onClose: opts.onClose ? [opts.onClose] : [],
   };
 }
 
+const tabClasses = ["pa2", "f--small", "br", "b--dimmer"];
+
+function tabEl(tab: Tab) {
+  return E("div", ["wv-tab", ...tabClasses], tab.name); // TODO: nice tabs with event listeners and close buttons and whatnot
+}
+
+function dummyTab() {
+  return E("div", ["wv-tab-dummy", ...tabClasses], "dummy");
+}
+
 export function newPane(tabs: Tab[], size = 1): Pane {
+  const tabEls = tabs.length === 0 ? [dummyTab()] : tabs.map(tab => tabEl(tab));
   const el = E("div", ["wv-pane"], [
-    E("div", ["wv-tabs"], tabs.map(tab => (
-      E("div", ["wv-tab"], tab.name) // TODO: nice tabs with event listeners and close buttons and whatnot
-    ))),
+    E("div", ["wv-tabs", "bg--toolbar", "bb", "b--dimmer", "shadow"], tabEls),
     E("div", ["wv-pane-content"], tabs.map(tab => tab.content)),
   ]);
 
@@ -62,10 +76,14 @@ export function newPaneContainer(direction: PaneDirection, panes: Pane[]): PaneC
 
 export function addTabToPane(tab: Tab, pane: Pane) {
   pane.tabs.push(tab);
-  // TODO: update DOM
+  for (const dummy of pane.el.querySelectorAll(".wv-tab-dummy")) {
+    dummy.remove();
+  }
+  pane.el.querySelector(".wv-tabs")?.appendChild(tabEl(tab));
+  pane.el.querySelector(".wv-pane-content")?.appendChild(tab.content);
 }
 
-function activateTab(pane: Pane, tab: Tab) {
+export function activateTab(pane: Pane, tab: Tab) {
   const tabIndex = pane.tabs.indexOf(tab);
   if (tabIndex === -1) {
     throw new Error("wrong pane for tab");

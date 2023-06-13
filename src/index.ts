@@ -1,10 +1,10 @@
 import { parse } from "./parse";
 import wasmUrl from "../wasm-tools/pkg/wasm_viewer_bg.wasm";
-import wasmInit, { Export, Import, IndirectNamingResultArray } from "../wasm-tools/pkg";
+import wasmInit, { Export, Import, IndirectNamingResultArray, Name } from "../wasm-tools/pkg";
 import { Module, Section, WASM_PAGE_SIZE, bytesToString, funcTypeToString, memoryTypeToString } from "./types";
 import { DataSegmentRef, E, ElementSegmentRef, F, FunctionRef, GlobalRef, ItemCount, Items, KindChip, MemoryRef, N, NameSection, RefTypeRef, Reference, TableRef, Tip, Toggle, TypeRef, ValTypeRef, WVNode, WasmError, addToggleEvents } from "./components";
 import { assertUnreachable } from "./util";
-import { newPane, newPaneContainer } from "./panes";
+import { activateTab, addTabToPane, newPane, newPaneContainer, newTab } from "./panes";
 
 async function init() {
   const url = wasmUrl as unknown as string;
@@ -48,9 +48,11 @@ doButton.addEventListener("click", async () => {
   await loadModuleFromFile(wasmFile);
 });
 
+const scratchPane = newPane([], 1);
+const functionsPane = newPane([], 2);
 const allPanes = newPaneContainer("vertical", [
-  newPane([], 1),
-  newPane([], 2),
+  scratchPane,
+  functionsPane,
 ]);
 panes.appendChild(allPanes.el);
 
@@ -511,20 +513,16 @@ async function loadModuleFromFile(wasmFile: File) {
             const funcIndex = module.imported.funcs.length + i;
             const name = module.names.funcs[funcIndex];
             const funcTypeIndex = module.functionType(funcIndex);
-            items.push(Toggle({
-              title: E("div", ["flex", "flex-column", "g1"], [
-                E("b", [], name ? `Function ${funcIndex}: ${name}` : `Function ${funcIndex}`),
-                E("div", ["f--small"], [
-                  funcTypeIndex !== undefined
-                    ? TypeRef({ module: module, index: funcTypeIndex })
-                    : Reference({ text: "unknown type" }),
-                ]),
+            const item = E("div", ["item", "pa2", "flex", "flex-column", "g1"], [
+              E("b", [], name ? `Function ${funcIndex}: ${name}` : `Function ${funcIndex}`),
+              E("div", ["f--small"], [
+                funcTypeIndex !== undefined
+                  ? TypeRef({ module: module, index: funcTypeIndex })
+                  : Reference({ text: "unknown type" }),
               ]),
-              item: true,
-              children: [
-
-              ],
-            }));
+            ]);
+            item.addEventListener("click", () => openFunction(funcIndex));
+            items.push(item);
           }
           sectionContents.appendChild(Items(items));
         }
@@ -578,6 +576,57 @@ function sectionName(section: Section): string {
     default:
       return `${section.type} Section`;
   }
+}
+
+interface NameSubscriptions {
+  function: NameMapSubscriptions;
+}
+
+type NameUpdateCallback = (module: Module) => void;
+
+interface NameMapSubscriptions {
+  [index: number]: NameUpdateCallback[] | undefined;
+}
+
+interface SubscriptionResult {
+  unsubscribe: () => void;
+}
+
+const nameSubscriptions: NameSubscriptions = {
+  "function": {},
+};
+
+function subscribeToNameChanges(kind: Name["kind"], index: number, update: NameUpdateCallback): SubscriptionResult {
+  let unsubscribe: () => void;
+  switch (kind) {
+    case "function": {
+      const subscriptions = nameSubscriptions.function[index] ?? [];
+      subscriptions.push(update);
+      unsubscribe = () => subscriptions.splice(subscriptions.indexOf(update), 1);
+      nameSubscriptions.function[index] = subscriptions;
+    } break;
+    default:
+      assertUnreachable(kind);
+  }
+  update(module);
+
+  return {
+    unsubscribe,
+  };
+}
+
+function openFunction(index: number) {
+  const nameEl = E("span", []);
+  const { unsubscribe } = subscribeToNameChanges("function", index, module => {
+    const name = module.names.funcs[index];
+    nameEl.innerText = name ? `Function ${name}` : `Function ${index}`;
+  });
+  const tab = newTab(nameEl, {
+    onClose: unsubscribe,
+    content: E("div", ["pa3"], nameEl.innerText),
+  });
+  addTabToPane(tab, functionsPane);
+  activateTab(functionsPane, tab);
 }
 
 export {};

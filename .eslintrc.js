@@ -39,5 +39,6 @@ module.exports = {
     "@typescript-eslint/no-explicit-any": "off", // any is always evil, even when you are explicit 🤡
     "@typescript-eslint/no-misused-promises": "off", // async functions in addEventListener are evil 🤡
     "@typescript-eslint/ban-types": "off", // we're too stupid to understand if you have a custom type named Function 🤡 (by design 🤡)
+    "@typescript-eslint/consistent-indexed-object-style": "off", // index signatures are not "readable" 🤡
   },
 };
