@@ -4,6 +4,7 @@ import wasmInit, { Export, Import, IndirectNamingResultArray } from "../wasm-too
 import { Module, Section, WASM_PAGE_SIZE, bytesToString, funcTypeToString, memoryTypeToString } from "./types";
 import { DataSegmentRef, E, ElementSegmentRef, F, FunctionRef, GlobalRef, ItemCount, Items, KindChip, MemoryRef, N, NameSection, RefTypeRef, Reference, TableRef, Tip, Toggle, TypeRef, ValTypeRef, WVNode, WasmError, addToggleEvents } from "./components";
 import { assertUnreachable } from "./util";
+import { newPane, newPaneContainer } from "./panes";
 
 async function init() {
   const url = wasmUrl as unknown as string;
@@ -25,6 +26,7 @@ function el(id: string): HTMLElement {
 const filePicker = el("file-picker") as HTMLInputElement & { files: FileList };
 const doButton = el("doeet");
 const sections = el("sections");
+const panes = el("panes");
 
 function updatePickerUI() {
   if (filePicker.files.length === 0) {
@@ -42,7 +44,17 @@ doButton.addEventListener("click", async () => {
   if (filePicker.files.length === 0) {
     return;
   }
+  const wasmFile = filePicker.files[0];
+  await loadModuleFromFile(wasmFile);
+});
 
+const allPanes = newPaneContainer("vertical", [
+  newPane([], 1),
+  newPane([], 2),
+]);
+panes.appendChild(allPanes.el);
+
+async function loadModuleFromFile(wasmFile: File) {
   // TODO: get rid of these
   function p(msg: string) {
     const el = document.createElement("p");
@@ -71,11 +83,14 @@ doButton.addEventListener("click", async () => {
     });
   }
 
-  const wasmFile = filePicker.files[0];
   module = await parse(wasmFile.stream());
 
   // @ts-expect-error I am not allowed to debug my own code 🤡
   window.currentModule = module;
+
+  // TODO: Inspect each section for correct handling of indices.
+  // Functions, tables, memories, and globals can all be imported, and therefore can have their
+  // indices shifted.
 
   sections.innerHTML = "";
   for (const section of module.sections) {
@@ -552,7 +567,7 @@ doButton.addEventListener("click", async () => {
     addToggleEvents(sectionEl);
     sections.appendChild(sectionEl);
   }
-});
+}
 
 function sectionName(section: Section): string {
   switch (section.type) {

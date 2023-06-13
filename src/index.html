@@ -6,11 +6,23 @@
 </head>
 
 <body>
-    <h1>WASM Viewer</h1>
-    <input id="file-picker" type="file" accept="application/wasm">
-    <button id="doeet">View WASM Module</button>
-    <div class="viewer">
-        <div id="sections"></div>
+    <div class="viewer absolute absolute--fill">
+        <div class="wv-resizable" style="flex-grow: 1">
+            <div class="flex flex-column bg--content">
+                <div class="pa2 bb b--dimmer bg--toolbar shadow">
+                    <b>WASM Viewer</b>
+                    <input id="file-picker" type="file" accept="application/wasm">
+                    <button id="doeet">View WASM Module</button>
+                </div>
+                <div class="overflow-y-auto pr2">
+                    <div id="sections"></div>
+                </div>
+            </div>
+        </div>
+        <div class="wv-resizable" style="flex-grow: 1">
+            <div id="panes" class="panes">
+            </div>
+        </div>
     </div>
 
     <script src="src/index.ts"></script>

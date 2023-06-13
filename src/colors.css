@@ -1,7 +1,10 @@
 :root {
-  --viewer-background: #e6ecf0;
+  --viewer-background: #cbd5db;
+  --content-background: #e6ecf0;
+  --toolbar-background: #b5cddd;
   --item-background: #fff;
   --border-dim: #5e8aa8;
+  --border-dimmer: #9fb5c4;
   --error-background: #ffdbe2;
   --reference-background: rgba(0, 0, 0, 0.05);
   --reference-background-hover: rgba(0, 0, 0, 0.1);
@@ -9,4 +12,16 @@
 
 .b--dim {
   border-color: var(--border-dim);
+}
+
+.b--dimmer {
+  border-color: var(--border-dimmer);
+}
+
+.bg--toolbar {
+  background-color: var(--toolbar-background);
+}
+
+.bg--content {
+  background-color: var(--content-background);
 }

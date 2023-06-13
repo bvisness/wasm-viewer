@@ -1,0 +1,63 @@
+.wv-pane {
+  display: flex;
+  flex-direction: column;
+}
+
+.wv-tabs {
+  flex-shrink: 0;
+  display: flex;
+}
+
+.wv-pane-container {
+  flex-grow: 1;
+  display: flex;
+}
+
+.wv-pane-container.wv-vertical {
+  flex-direction: column;
+}
+
+.wv-pane-container.wv-horizontal {
+  flex-direction: row;
+}
+
+.wv-pane-container > :not(:last-child) {
+  border: 0 solid var(--border-dim);
+}
+
+.wv-pane-container.wv-vertical > :not(:last-child) {
+  border-bottom-width: 1px;
+}
+
+.wv-pane-container.wv-horizontal > :not(:last-child) {
+  border-right-width: 1px;
+}
+
+.wv-pane-content {
+  flex-grow: 1;
+  position: relative;
+}
+
+.wv-pane-content > * {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.wv-resizable {
+  flex-basis: 1px;
+  /* flex-grow must be directly set on the element */
+  flex-shrink: 1;
+  position: relative;
+}
+
+.wv-resizable > * {
+  overflow: hidden;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
