@@ -1,6 +1,6 @@
 import { readVarU } from "./leb128";
 import { WasmReader } from "./reader";
-import { Module, Section, CustomSection } from "./types";
+import { Module, Section, CustomSection, SectionCommon } from "./types";
 import {
   parse_code_section,
   parse_custom_section,
@@ -52,9 +52,11 @@ export async function parse(stream: ReadableStream<Uint8Array>): Promise<Module>
         const bytes = await reader.getNBytes(sectionSize);
         const custom = parse_custom_section(bytes, offset);
 
-        const sec: CustomSection = {
+        const sec: SectionCommon & CustomSection = {
           type: "Custom",
           custom: custom,
+          offset: offset,
+          length: sectionSize,
         };
         if (sec.custom.name === "name") {
           console.log("Custom section is name section; parsing that too");
@@ -74,6 +76,8 @@ export async function parse(stream: ReadableStream<Uint8Array>): Promise<Module>
         sections.push({
           type: "Type",
           types: types,
+          offset: offset,
+          length: sectionSize,
         });
       } break;
       case 2: {
@@ -87,6 +91,8 @@ export async function parse(stream: ReadableStream<Uint8Array>): Promise<Module>
         sections.push({
           type: "Import",
           imports: imports,
+          offset: offset,
+          length: sectionSize,
         });
       } break;
       case 3: {
@@ -100,6 +106,8 @@ export async function parse(stream: ReadableStream<Uint8Array>): Promise<Module>
         sections.push({
           type: "Function",
           functions: functions,
+          offset: offset,
+          length: sectionSize,
         });
       } break;
       case 4: {
@@ -113,19 +121,23 @@ export async function parse(stream: ReadableStream<Uint8Array>): Promise<Module>
         sections.push({
           type: "Table",
           tables: tables,
+          offset: offset,
+          length: sectionSize,
         });
       } break;
       case 5: {
       // Memory section
         console.log("Memory section");
         console.log("Getting this many bytes:", sectionSize);
-        const memOffset = reader.cursor;
-        const memBytes = await reader.getNBytes(sectionSize);
-        const mems = parse_memory_section(memBytes, memOffset);
+        const offset = reader.cursor;
+        const bytes = await reader.getNBytes(sectionSize);
+        const mems = parse_memory_section(bytes, offset);
 
         sections.push({
           type: "Memory",
           mems: mems,
+          offset: offset,
+          length: sectionSize,
         });
       } break;
       case 6: {
@@ -139,6 +151,8 @@ export async function parse(stream: ReadableStream<Uint8Array>): Promise<Module>
         sections.push({
           type: "Global",
           globals: globals,
+          offset: offset,
+          length: sectionSize,
         });
       } break;
       case 7: {
@@ -152,17 +166,22 @@ export async function parse(stream: ReadableStream<Uint8Array>): Promise<Module>
         sections.push({
           type: "Export",
           exports: exports,
+          offset: offset,
+          length: sectionSize,
         });
       } break;
       case 8: {
       // Start section
         console.log("Start section");
         console.log("Getting this many bytes:", sectionSize);
+        const offset = reader.cursor;
         const startFunc = await readVarU(reader, 32);
 
         sections.push({
           type: "Start",
           func: startFunc,
+          offset: offset,
+          length: sectionSize,
         });
       } break;
       case 9: {
@@ -176,6 +195,8 @@ export async function parse(stream: ReadableStream<Uint8Array>): Promise<Module>
         sections.push({
           type: "Element",
           elements: elements,
+          offset: offset,
+          length: sectionSize,
         });
       } break;
       case 10: {
@@ -201,6 +222,8 @@ export async function parse(stream: ReadableStream<Uint8Array>): Promise<Module>
         sections.push({
           type: "Code",
           funcs: funcs,
+          offset: offset,
+          length: sectionSize,
         });
       } break;
       case 11: {
@@ -214,17 +237,22 @@ export async function parse(stream: ReadableStream<Uint8Array>): Promise<Module>
         sections.push({
           type: "Data",
           datas: datas,
+          offset: offset,
+          length: sectionSize,
         });
       } break;
       case 12: {
       // Data count section
         console.log("Data count section");
         console.log("Getting this many bytes:", sectionSize);
+        const offset = reader.cursor;
         const numDatas = await readVarU(reader, 32);
 
         sections.push({
           type: "DataCount",
           numDataSegments: numDatas,
+          offset: offset,
+          length: sectionSize,
         });
       } break;
       default: {

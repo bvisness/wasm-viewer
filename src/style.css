@@ -7,8 +7,11 @@
   box-sizing: border-box;
 }
 
-.viewer {
+body {
   font-family: ui-monospace,SFMono-Regular,SF Mono,Menlo,Consolas,Liberation Mono,monospace;
+}
+
+.viewer {
   background-color: var(--viewer-background);
   display: flex;
   align-items: stretch;
@@ -78,6 +81,14 @@
   background-color: #fdd;
 }
 
+.chip-green {
+  background-color: #cec;
+}
+
+.chip-gray {
+  background-color: #e8e8e8;
+}
+
 .import-export-grid {
   display: grid;
   grid-template-columns: max-content auto;
@@ -119,4 +130,17 @@
   position: relative;
   text-decoration: underline;
   text-decoration-style: dotted
+}
+
+.item-type.goto-current {
+  border-width: 3px;
+}
+
+.scroll-padder {
+  position: absolute;
+  left: -1rem;
+  right: -1rem;
+  top: -1rem;
+  bottom: -1rem;
+  pointer-events: none;
 }

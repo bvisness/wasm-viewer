@@ -24,6 +24,7 @@ module.exports = {
     }],
     "@typescript-eslint/array-type": "off",
     "@typescript-eslint/no-base-to-string": "off",
+    "@typescript-eslint/no-non-null-assertion": "off",
 
     "semi": "off",
     "@typescript-eslint/semi": "error",
@@ -40,5 +41,10 @@ module.exports = {
     "@typescript-eslint/no-misused-promises": "off", // async functions in addEventListener are evil 🤡
     "@typescript-eslint/ban-types": "off", // we're too stupid to understand if you have a custom type named Function 🤡 (by design 🤡)
     "@typescript-eslint/consistent-indexed-object-style": "off", // index signatures are not "readable" 🤡
+
+    // you are not allowed to write empty functions because this is somehow confusing 🤡
+    // what if you did a empty function by accident? 🤡
+    "no-empty-function": "off",
+    "@typescript-eslint/no-empty-function": "off",
   },
 };

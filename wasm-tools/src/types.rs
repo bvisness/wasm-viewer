@@ -161,15 +161,21 @@ impl From<ParserFuncType> for FuncType {
 }
 
 /// Represents a type in a WebAssembly module.
+#[wasmtools_struct]
+pub struct Type {
+    pub t: TypeNoOffset,
+    pub offset: usize,
+}
+
 #[wasmtools_enum]
-pub enum Type {
+pub enum TypeNoOffset {
     func(FuncType),
 }
 
-impl From<ParserType> for Type {
+impl From<ParserType> for TypeNoOffset {
     fn from(value: ParserType) -> Self {
         match value {
-            ParserType::Func(f) => Type::new_func(f.into()),
+            ParserType::Func(f) => TypeNoOffset::new_func(f.into()),
         }
     }
 }

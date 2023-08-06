@@ -1,5 +1,7 @@
 import { Naming, NamingResultArray, RefType, ValType } from "../wasm-tools/pkg/wasm_viewer";
+import { goto } from "./goto";
 import { Module, funcTypeToString, globalTypeToString, refTypeToString, valTypeToString } from "./types";
+import { assertUnreachable } from "./util";
 
 export type WVNode = Node | string;
 export type WVNodes = WVNode | WVNode[];
@@ -121,24 +123,34 @@ export function Reference(props: {
   if (props.tooltip) {
     ref.appendChild(Tooltip(props.tooltip));
   }
+  ref.addEventListener("click", () => props.goto?.());
   return ref;
 }
 
 export function TypeRef(props: {
   module: Module;
   index: number;
+  hideName?: boolean;
 }): Node {
   const type = props.module.type(props.index);
   if (type) {
-    switch (type.kind) {
+    const name = props.module.names.types[props.index];
+
+    let descriptiveName = "";
+    const kind = type.t.kind;
+    switch (kind) {
       case "func": {
-        return Reference({
-          text: funcTypeToString(type.func),
-          tooltip: `type ${props.index}`,
-          // TODO: goto
-        });
-      }
+        descriptiveName = funcTypeToString(type.t.func);
+      } break;
+      default:
+        assertUnreachable(kind);
     }
+
+    return Reference({
+      text: ((name && !props.hideName) ? name : undefined) ?? descriptiveName,
+      tooltip: `type ${props.index}`,
+      goto: () => goto({ kind: "type", index: props.index }),
+    });
   } else {
     return Reference({
       text: `type ${props.index} (invalid)`,
@@ -153,7 +165,7 @@ export function FunctionRef(props: {
 }): Node {
   const typeIndex = props.module.functionType(props.index);
   if (typeIndex !== undefined) {
-    const type = props.module.type(typeIndex)?.func;
+    const type = props.module.type(typeIndex)?.t.func;
     const typeStr = type ? funcTypeToString(type) : `type ${typeIndex} (invalid)`;
 
     const name = props.module.names.funcs[props.index];
@@ -298,4 +310,8 @@ export function NameSection(props: {
       }
     })),
   });
+}
+
+export function ScrollPadder(): Node {
+  return E("div", ["scroll-padder"], undefined);
 }

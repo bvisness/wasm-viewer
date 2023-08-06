@@ -18,90 +18,97 @@ import type {
   GlobalType,
   TableType,
   NamingResultArray,
+  IndirectNamingResultArray,
 } from "../wasm-tools/pkg/wasm_viewer";
 import { assertUnreachable } from "./util";
 
-export interface CustomSection {
-    type: "Custom";
-    custom: WasmCustomSection;
+export interface SectionCommon {
+  offset: number;
+  length: number;
+}
 
-    names?: Array<Name | BinaryError>;
+export interface CustomSection {
+  type: "Custom";
+  custom: WasmCustomSection;
+
+  names?: Array<Name | BinaryError>;
 }
 
 export interface TypeSection {
-    type: "Type";
-    types: Array<Type | BinaryError>;
+  type: "Type";
+  types: Array<Type | BinaryError>;
 }
 
 export interface ImportSection {
-    type: "Import";
-    imports: WasmImportSection;
+  type: "Import";
+  imports: WasmImportSection;
 }
 
 export interface FunctionSection {
-    type: "Function";
-    functions: Array<Function | BinaryError>;
+  type: "Function";
+  functions: Array<Function | BinaryError>;
 }
 
 export interface TableSection {
-    type: "Table";
-    tables: Array<Table | BinaryError>;
+  type: "Table";
+  tables: Array<Table | BinaryError>;
 }
 
 export interface MemorySection {
-    type: "Memory";
-    mems: Array<MemoryType | BinaryError>;
+  type: "Memory";
+  mems: Array<MemoryType | BinaryError>;
 }
 
 export interface GlobalSection {
-    type: "Global";
-    globals: Array<Global | BinaryError>;
+  type: "Global";
+  globals: Array<Global | BinaryError>;
 }
 
 export interface ExportSection {
-    type: "Export";
-    exports: Array<Export | BinaryError>;
+  type: "Export";
+  exports: Array<Export | BinaryError>;
 }
 
 export interface StartSection {
-    type: "Start";
-    func: number;
+  type: "Start";
+  func: number;
 }
 
 export interface ElementSection {
-    type: "Element";
-    elements: Array<Element | BinaryError>;
+  type: "Element";
+  elements: Array<Element | BinaryError>;
 }
 
 export interface CodeSection {
-    type: "Code";
-    funcs: Array<FunctionBody | BinaryError>;
+  type: "Code";
+  funcs: Array<FunctionBody | BinaryError>;
 }
 
 export interface DataSection {
-    type: "Data";
-    datas: Array<Data | BinaryError>;
+  type: "Data";
+  datas: Array<Data | BinaryError>;
 }
 
 export interface DataCountSection {
-    type: "DataCount";
-    numDataSegments: number;
+  type: "DataCount";
+  numDataSegments: number;
 }
 
-export type Section =
-    CustomSection
-    | TypeSection
-    | ImportSection
-    | FunctionSection
-    | TableSection
-    | MemorySection
-    | GlobalSection
-    | ExportSection
-    | StartSection
-    | ElementSection
-    | CodeSection
-    | DataSection
-    | DataCountSection;
+export type Section = SectionCommon & (
+  CustomSection
+  | TypeSection
+  | ImportSection
+  | FunctionSection
+  | TableSection
+  | MemorySection
+  | GlobalSection
+  | ExportSection
+  | StartSection
+  | ElementSection
+  | CodeSection
+  | DataSection
+  | DataCountSection
+);
 
 export interface ImportedData {
   funcs: Function["type_idx"][];
@@ -110,9 +117,20 @@ export interface ImportedData {
   globals: GlobalType[];
 }
 
+export type NameMap = (string | undefined)[];
+export type IndirectNameMap = (NameMap | undefined)[];
+
 export interface Names {
   module: string | undefined;
-  funcs: (string | undefined)[];
+  funcs: NameMap;
+  locals: IndirectNameMap;
+  labels: IndirectNameMap;
+  types: NameMap;
+  tables: NameMap;
+  memories: NameMap;
+  globals: NameMap;
+  elements: NameMap;
+  datas: NameMap;
 }
 
 export class Module {
@@ -121,12 +139,30 @@ export class Module {
   names: Names;
 
   constructor(sections: Section[]) {
-    function nameMap(arr: (string | undefined)[], names: NamingResultArray) {
+    function nameMap(arr: NameMap, names: NamingResultArray) {
       for (const name of names) {
         if (name.is_error) {
           continue;
         }
         arr[name.index] = name.name;
+      }
+    }
+
+    function indirectNameMap(arr: IndirectNameMap, names: IndirectNamingResultArray) {
+      for (const outer of names) {
+        if (outer.is_error) {
+          continue;
+        }
+        if (!arr[outer.index]) {
+          arr[outer.index] = [];
+        }
+
+        for (const inner of outer.names) {
+          if (inner.is_error) {
+            continue;
+          }
+          arr[outer.index]![inner.index] = inner.name;
+        }
       }
     }
 
@@ -140,6 +176,14 @@ export class Module {
     this.names = {
       module: undefined,
       funcs: [],
+      locals: [],
+      labels: [],
+      types: [],
+      tables: [],
+      memories: [],
+      globals: [],
+      elements: [],
+      datas: [],
     };
 
     // Save imports and their names
@@ -190,16 +234,43 @@ export class Module {
       if (name.is_error) {
         continue;
       }
-      switch (name.kind) {
+      const kind = name.kind;
+      switch (kind) {
         case "module": {
           this.names.module = name.module;
         } break;
         case "function": {
           nameMap(this.names.funcs, name.function);
         } break;
-        // TODO: All name types
-        // default:
-        //   return assertUnreachable(name.kind);
+        case "local": {
+          indirectNameMap(this.names.locals, name.local);
+        } break;
+        case "label": {
+          indirectNameMap(this.names.labels, name.label);
+        } break;
+        case "type_": {
+          nameMap(this.names.types, name.type_);
+        } break;
+        case "table": {
+          nameMap(this.names.tables, name.table);
+        } break;
+        case "memory": {
+          nameMap(this.names.memories, name.memory);
+        } break;
+        case "global": {
+          nameMap(this.names.globals, name.global);
+        } break;
+        case "element": {
+          nameMap(this.names.elements, name.element);
+        } break;
+        case "data": {
+          nameMap(this.names.datas, name.data);
+        } break;
+        case "unknown": {
+          // I sure do love being exhaustive
+        } break;
+        default:
+          return assertUnreachable(kind);
       }
     }
   }

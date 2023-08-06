@@ -2,9 +2,20 @@ import { parse } from "./parse";
 import wasmUrl from "../wasm-tools/pkg/wasm_viewer_bg.wasm";
 import wasmInit, { Export, Import, IndirectNamingResultArray, Name } from "../wasm-tools/pkg";
 import { Module, Section, WASM_PAGE_SIZE, bytesToString, funcTypeToString, memoryTypeToString } from "./types";
-import { DataSegmentRef, E, ElementSegmentRef, F, FunctionRef, GlobalRef, ItemCount, Items, KindChip, MemoryRef, N, NameSection, RefTypeRef, Reference, TableRef, Tip, Toggle, TypeRef, ValTypeRef, WVNode, WasmError, addToggleEvents } from "./components";
+import { DataSegmentRef, E, ElementSegmentRef, F, FunctionRef, GlobalRef, ItemCount, Items, KindChip, MemoryRef, N, NameSection, RefTypeRef, Reference, ScrollPadder, TableRef, Tip, Toggle, TypeRef, ValTypeRef, WVNode, WasmError, addToggleEvents } from "./components";
 import { assertUnreachable } from "./util";
 import { activateTab, addTabToPane, newPane, newPaneContainer, newTab } from "./panes";
+import { GotoEntry, addGoto, goto, lookUpGoto as lookUpGotos } from "./goto";
+import {
+  filePicker,
+  doButton,
+  sections,
+  panes,
+  gotoContainer,
+  gotoInput,
+  gotoHint,
+  gotoResults,
+} from "./elements";
 
 async function init() {
   const url = wasmUrl as unknown as string;
@@ -14,19 +25,6 @@ async function init() {
 init().catch(e => {
   throw e;
 });
-
-function el(id: string): HTMLElement {
-  const element = document.getElementById(id);
-  if (!element) {
-    throw new Error(`no element exists with id '${id}'`);
-  }
-  return element;
-}
-
-const filePicker = el("file-picker") as HTMLInputElement & { files: FileList };
-const doButton = el("doeet");
-const sections = el("sections");
-const panes = el("panes");
 
 function updatePickerUI() {
   if (filePicker.files.length === 0) {
@@ -95,7 +93,7 @@ async function loadModuleFromFile(wasmFile: File) {
   // indices shifted.
 
   sections.innerHTML = "";
-  for (const section of module.sections) {
+  for (const [sectionIndex, section] of module.sections.entries()) {
     const sectionContents = E("div", ["toggle-contents"], []);
 
     const headerEl = E("div", ["toggle-title", "ma0", "mt2", "flex", "g2"], [
@@ -109,8 +107,18 @@ async function loadModuleFromFile(wasmFile: File) {
       ]),
     ]);
 
+    addGoto({
+      kind: "section",
+      index: sectionIndex,
+      depth: 0,
+      offset: section.offset,
+      length: section.length,
+    });
+
     switch (section.type) {
       case "Custom": {
+        sectionEl.classList.add("section-custom");
+
         const customItem = E("div", ["item", "pa2", "flex", "flex-column"]);
 
         if (section.names) {
@@ -193,6 +201,8 @@ async function loadModuleFromFile(wasmFile: File) {
       } break;
       case "Type": {
         headerEl.appendChild(ItemCount(section.types.length));
+        sectionEl.classList.add("section-type");
+        const sectionEnd = section.offset + section.length;
 
         const items: Node[] = [];
         for (const [i, type] of section.types.entries()) {
@@ -200,21 +210,32 @@ async function loadModuleFromFile(wasmFile: File) {
             items.push(WasmError(`ERROR (offset ${type.offset}): ${type.message}`));
           } else {
             let details: string;
-            switch (type.kind) {
+            switch (type.t.kind) {
               case "func": {
-                details = funcTypeToString(type.func);
+                details = funcTypeToString(type.t.func);
               } break;
             }
-            items.push(E("div", ["item", "pa2", "flex", "flex-column", "g2"], [
+            items.push(E("div", ["item", "item-type", "pa2", "flex", "flex-column", "g2", "relative"], [
               E("div", ["b"], `Type ${i}`),
               E("div", [], details),
+              ScrollPadder(),
             ]));
+
+            const nextOffset = section.types[i + 1]?.offset ?? sectionEnd;
+            addGoto({
+              kind: "type",
+              depth: 1,
+              offset: type.offset,
+              length: nextOffset - type.offset,
+              index: i,
+            });
           }
         }
         sectionContents.appendChild(Items(items));
       } break;
       case "Import": {
         headerEl.appendChild(ItemCount(section.imports.imports.length));
+        sectionEl.classList.add("section-import");
 
         const items: Node[] = [];
 
@@ -288,6 +309,7 @@ async function loadModuleFromFile(wasmFile: File) {
       } break;
       case "Function": {
         headerEl.appendChild(ItemCount(section.functions.length));
+        sectionEl.classList.add("section-function");
 
         const items: Node[] = [];
         if (module.imported.funcs.length > 0) {
@@ -309,6 +331,7 @@ async function loadModuleFromFile(wasmFile: File) {
       } break;
       case "Table": {
         headerEl.appendChild(ItemCount(section.tables.length));
+        sectionEl.classList.add("section-table");
 
         const items: Node[] = [];
         for (const [i, table] of section.tables.entries()) {
@@ -330,6 +353,7 @@ async function loadModuleFromFile(wasmFile: File) {
       } break;
       case "Memory": {
         headerEl.appendChild(ItemCount(section.mems.length));
+        sectionEl.classList.add("section-memory");
 
         const items: Node[] = [];
         for (const [i, mem] of section.mems.entries()) {
@@ -372,6 +396,7 @@ async function loadModuleFromFile(wasmFile: File) {
       } break;
       case "Global": {
         headerEl.appendChild(ItemCount(section.globals.length));
+        sectionEl.classList.add("section-global");
 
         const items: Node[] = [];
         for (const [i, global] of section.globals.entries()) {
@@ -393,6 +418,7 @@ async function loadModuleFromFile(wasmFile: File) {
       } break;
       case "Export": {
         headerEl.appendChild(ItemCount(section.exports.length));
+        sectionEl.classList.add("section-export");
 
         const goodExports: Export[] = [];
         for (const exp of section.exports) {
@@ -443,10 +469,12 @@ async function loadModuleFromFile(wasmFile: File) {
         sectionContents.appendChild(E("div", ["item", "pv2", "ph3", "import-export-grid"], exports));
       } break;
       case "Start": {
+        sectionEl.classList.add("section-start");
         sectionContents.appendChild(p(`Start func: ${section.func}`));
       } break;
       case "Element": {
         headerEl.appendChild(ItemCount(section.elements.length));
+        sectionEl.classList.add("section-element");
 
         const items: Node[] = [];
         for (const [i, element] of section.elements.entries()) {
@@ -492,6 +520,7 @@ async function loadModuleFromFile(wasmFile: File) {
       } break;
       case "Code": {
         headerEl.appendChild(ItemCount(section.funcs.length));
+        sectionEl.classList.add("section-code");
 
         const items: Node[] = [];
 
@@ -529,6 +558,7 @@ async function loadModuleFromFile(wasmFile: File) {
       } break;
       case "Data": {
         headerEl.appendChild(ItemCount(section.datas.length));
+        sectionEl.classList.add("section-data");
 
         const items: Node[] = [];
         for (const [i, data] of section.datas.entries()) {
@@ -558,6 +588,7 @@ async function loadModuleFromFile(wasmFile: File) {
         sectionContents.appendChild(Items(items));
       } break;
       case "DataCount": {
+        sectionEl.classList.add("section-data-count");
         sectionContents.appendChild(p(`Num data segments: ${section.numDataSegments}`));
       } break;
     }
@@ -605,8 +636,11 @@ function subscribeToNameChanges(kind: Name["kind"], index: number, update: NameU
       unsubscribe = () => subscriptions.splice(subscriptions.indexOf(update), 1);
       nameSubscriptions.function[index] = subscriptions;
     } break;
-    default:
-      assertUnreachable(kind);
+    default: {
+      // TODO: Subscribe to all kinds of name changes
+      // assertUnreachable(kind);
+      unsubscribe = () => {};
+    } break;
   }
   update(module);
 
@@ -628,5 +662,88 @@ function openFunction(index: number) {
   addTabToPane(tab, functionsPane);
   activateTab(functionsPane, tab);
 }
+
+gotoInput.addEventListener("input", () => {
+  gotoResults.innerHTML = "";
+  const results: Node[] = [];
+
+  const str = gotoInput.value;
+  if (/^\d+$/.test(str)) {
+    // number only, treat as byte offset
+    const offset = parseInt(str, 10);
+    const gotos = lookUpGotos(offset);
+    for (const gotoEntry of gotos) {
+      const resultClasses = ["flex", "g1", "items-center"];
+      let result: Node;
+      const kind = gotoEntry.kind;
+      switch (kind) {
+        case "section": {
+          const section = module.sections[gotoEntry.index];
+          let name: string;
+          switch (section.type) {
+            case "DataCount": name = "Data Count"; break;
+            default: name = section.type; break;
+          }
+
+          result = E("div", resultClasses, [
+            E("span", ["chip", "chip-gray"], "section"),
+            `${name} Section`,
+          ]);
+        } break;
+        case "type": {
+          result = E("div", resultClasses, [
+            E("span", ["chip", "chip-green"], "type"),
+            module.names.types[gotoEntry.index] ?? `type ${gotoEntry.index}`,
+          ]);
+        } break;
+        default:
+          assertUnreachable(kind);
+      }
+      result.addEventListener("click", () => {
+        goto(gotoEntry);
+        gotoContainer.classList.add("dn");
+      });
+      results.push(result);
+    }
+  }
+
+  // TODO:
+  // "quotes" to force a name search
+  // index shortcuts: t0, m0, etc.
+
+  gotoHint.classList.toggle("flex", str === ""); // it already has dn
+  gotoResults.classList.toggle("dn", results.length === 0);
+  for (const result of results) {
+    gotoResults.appendChild(result);
+  }
+});
+
+document.addEventListener("keydown", ev => {
+  // toggle goto
+  if ((ev.ctrlKey || ev.metaKey) && ev.key === "k") {
+    ev.preventDefault();
+    if (ev.repeat) {
+      return;
+    }
+
+    const appearing = gotoContainer.classList.contains("dn");
+    gotoContainer.classList.toggle("dn");
+    if (appearing) {
+      gotoInput.value = "";
+      gotoInput.focus();
+    }
+
+    return;
+  }
+
+  if (ev.key === "Escape") {
+    if (!gotoContainer.classList.contains("dn")) {
+      gotoContainer.classList.add("dn");
+      return;
+    }
+  }
+
+  // console.log("unknown key", ev.key);
+});
 
 export {};

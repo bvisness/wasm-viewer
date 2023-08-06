@@ -14,9 +14,12 @@ mod types;
 pub fn parse_type_section(data: &[u8], offset: usize) -> Result<TypeResultArray, BinaryError> {
     let reader = TypeSectionReader::new(data, offset)?;
     let results = reader
-        .into_iter()
+        .into_iter_with_offsets()
         .map(|r| match r {
-            Ok(v) => TypeResult::Ok(v.into()),
+            Ok((offset, v)) => TypeResult::Ok(Type{
+                t: v.into(),
+                offset: offset,
+            }),
             Err(err) => TypeResult::Err(err.into()),
         })
         .collect::<Vec<TypeResult>>();
