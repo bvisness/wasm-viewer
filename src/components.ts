@@ -73,7 +73,7 @@ export function Toggle(props: {
   title: WVNode;
   item?: boolean;
   children: WVNodes;
-}): Node {
+}): HTMLElement {
   const outer = E("div", ["toggle", "flex", "items-start", "br1"]);
   if (props.item) {
     outer.classList.add("item");

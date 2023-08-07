@@ -85,6 +85,10 @@ body {
   background-color: #cec;
 }
 
+.chip-orange {
+  background-color: #ffcea3;
+}
+
 .chip-gray {
   background-color: #e8e8e8;
 }
@@ -134,6 +138,11 @@ body {
 
 .item-type.goto-current {
   border-width: 3px;
+}
+
+.goto-import.goto-current {
+  border-left: 2px solid var(--border-dim);
+  padding-left: 0.5rem;
 }
 
 .scroll-padder {

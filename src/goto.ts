@@ -8,7 +8,7 @@ an offset lookup more pleasant.
 import { sections } from "./elements";
 import { assertUnreachable } from "./util";
 
-export type GotoEntry = GotoSection | GotoType;
+export type GotoEntry = GotoSection | GotoType | GotoImport;
 
 export type GotoKind = GotoEntry["kind"];
 
@@ -20,6 +20,12 @@ export interface GotoSection {
 export interface GotoType {
   kind: "type";
   index: number;
+}
+
+export interface GotoImport {
+  kind: "import";
+  namespace: string;
+  name: string;
 }
 
 export type GotoBinary = GotoEntry & {
@@ -69,7 +75,7 @@ export function goto(entry: GotoEntry) {
     case "section": {
       const sectionEl = sections.querySelector(`.section:nth-child(${entry.index+1})`)!;
       sectionEl.classList.add("open", "goto-current");
-      sectionEl.scrollIntoView();
+      sectionEl.scrollIntoView({ behavior: "smooth" });
     } break;
     case "type": {
       const sectionEl = sections.querySelector(".section.section-type")!;
@@ -78,6 +84,17 @@ export function goto(entry: GotoEntry) {
       const typeEl = sectionEl.querySelector(`.item-type:nth-child(${entry.index+1})`)!;
       typeEl.classList.add("goto-current");
       typeEl.querySelector(".scroll-padder")!.scrollIntoView({ behavior: "smooth" });
+    } break;
+    case "import": {
+      const sectionEl = sections.querySelector(".section.section-import")!;
+      sectionEl.classList.add("open");
+
+      const namespaceEl = sectionEl.querySelector(`[data-import-namespace="${entry.namespace}"]`)!;
+      namespaceEl.classList.add("open");
+
+      const importEl = sectionEl.querySelector(`[data-import-name="${entry.name}"]`)!;
+      importEl.classList.add("goto-current");
+      importEl.scrollIntoView({ behavior: "smooth" });
     } break;
     default:
       assertUnreachable(kind);

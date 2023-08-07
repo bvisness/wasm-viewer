@@ -236,11 +236,12 @@ async function loadModuleFromFile(wasmFile: File) {
       case "Import": {
         headerEl.appendChild(ItemCount(section.imports.imports.length));
         sectionEl.classList.add("section-import");
+        const sectionEnd = section.offset + section.length;
 
         const items: Node[] = [];
 
         const importModules: { name: string; imports: Import[] }[] = [];
-        for (const imp of section.imports.imports) {
+        for (const [i, imp] of section.imports.imports.entries()) {
           if (imp.is_error) {
             items.push(WasmError(`ERROR (offset ${imp.offset}): ${imp.message}`));
             continue;
@@ -254,10 +255,20 @@ async function loadModuleFromFile(wasmFile: File) {
               imports: [imp],
             });
           }
+
+          const nextOffset = section.imports.imports[i + 1]?.offset ?? sectionEnd;
+          addGoto({
+            kind: "import",
+            depth: 1,
+            offset: imp.offset,
+            length: nextOffset - imp.offset,
+            namespace: imp.module,
+            name: imp.name,
+          });
         }
 
         for (const importModule of importModules) {
-          items.push(Toggle({
+          const toggleEl = Toggle({
             item: true,
             title: E("div", ["flex", "g2"], [
               E("b", [], importModule.name),
@@ -291,10 +302,12 @@ async function loadModuleFromFile(wasmFile: File) {
                   details = "???";
                 } break;
               }
+              const chip = E("div", ["tr", "goto-import"], [
+                KindChip({ kind: imp.ty.kind }),
+              ]);
+              chip.setAttribute("data-import-name", imp.name);
               return F([
-                E("div", ["tr"], [
-                  KindChip({ kind: imp.ty.kind }),
-                ]),
+                chip,
                 E("div", ["flex", "items-start", "g2"], [
                   E("div", ["flex", "flex-column", "g1"], [
                     imp.name,
@@ -303,7 +316,9 @@ async function loadModuleFromFile(wasmFile: File) {
                 ]),
               ]);
             })),
-          }));
+          });
+          toggleEl.setAttribute("data-import-namespace", importModule.name);
+          items.push(toggleEl);
         }
         sectionContents.appendChild(Items(items));
       } break;
@@ -694,6 +709,12 @@ gotoInput.addEventListener("input", () => {
           result = E("div", resultClasses, [
             E("span", ["chip", "chip-green"], "type"),
             module.names.types[gotoEntry.index] ?? `type ${gotoEntry.index}`,
+          ]);
+        } break;
+        case "import": {
+          result = E("div", resultClasses, [
+            E("span", ["chip", "chip-orange"], "import"),
+            `Import "${gotoEntry.namespace}" "${gotoEntry.name}"`,
           ]);
         } break;
         default:
