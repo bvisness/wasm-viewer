@@ -15,6 +15,8 @@ import {
   gotoInput,
   gotoHint,
   gotoResults,
+  gotoBackground,
+  gotoDialog,
 } from "./elements";
 
 async function init() {
@@ -678,6 +680,14 @@ function openFunction(index: number) {
   activateTab(functionsPane, tab);
 }
 
+function gotoVisible(): boolean {
+  return !gotoContainer.classList.contains("dn");
+}
+
+function toggleGoto(show: boolean) {
+  gotoContainer.classList.toggle("dn", !show);
+}
+
 gotoInput.addEventListener("input", () => {
   gotoResults.innerHTML = "";
   const results: Node[] = [];
@@ -722,7 +732,7 @@ gotoInput.addEventListener("input", () => {
       }
       result.addEventListener("click", () => {
         goto(gotoEntry);
-        gotoContainer.classList.add("dn");
+        toggleGoto(false);
       });
       results.push(result);
     }
@@ -747,24 +757,27 @@ document.addEventListener("keydown", ev => {
       return;
     }
 
-    const appearing = gotoContainer.classList.contains("dn");
-    gotoContainer.classList.toggle("dn");
+    const appearing = !gotoVisible();
+    toggleGoto(appearing);
     if (appearing) {
-      gotoInput.value = "";
       gotoInput.focus();
+      gotoInput.select();
     }
 
     return;
   }
 
   if (ev.key === "Escape") {
-    if (!gotoContainer.classList.contains("dn")) {
-      gotoContainer.classList.add("dn");
+    if (gotoVisible()) {
+      toggleGoto(false);
       return;
     }
   }
 
   // console.log("unknown key", ev.key);
 });
+
+gotoBackground.addEventListener("click", () => toggleGoto(false));
+gotoDialog.addEventListener("click", e => e.stopPropagation());
 
 export {};
