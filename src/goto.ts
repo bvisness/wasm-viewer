@@ -8,7 +8,11 @@ an offset lookup more pleasant.
 import { sections } from "./elements";
 import { assertUnreachable } from "./util";
 
-export type GotoEntry = GotoSection | GotoType | GotoImport;
+export type GotoEntry =
+  GotoSection
+  | GotoType
+  | GotoImport
+  | GotoFunction;
 
 export type GotoKind = GotoEntry["kind"];
 
@@ -26,6 +30,12 @@ export interface GotoImport {
   kind: "import";
   namespace: string;
   name: string;
+}
+
+export interface GotoFunction {
+  kind: "function";
+  indexInSection: number;
+  funcIndex: number;
 }
 
 export type GotoBinary = GotoEntry & {
@@ -95,6 +105,14 @@ export function goto(entry: GotoEntry) {
       const importEl = sectionEl.querySelector(`[data-import-name="${entry.name}"]`)!;
       importEl.classList.add("goto-current");
       importEl.scrollIntoView({ behavior: "smooth" });
+    } break;
+    case "function": {
+      const sectionEl = sections.querySelector(".section.section-function")!;
+      sectionEl.classList.add("open");
+
+      const functionEl = sectionEl.querySelector(`.item-function:nth-child(${entry.indexInSection+1})`)!;
+      functionEl.classList.add("goto-current");
+      functionEl.querySelector(".scroll-padder")!.scrollIntoView({ behavior: "smooth" });
     } break;
     default:
       assertUnreachable(kind);

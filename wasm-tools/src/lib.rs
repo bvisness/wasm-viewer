@@ -16,7 +16,7 @@ pub fn parse_type_section(data: &[u8], offset: usize) -> Result<TypeResultArray,
     let results = reader
         .into_iter_with_offsets()
         .map(|r| match r {
-            Ok((offset, v)) => TypeResult::Ok(Type{
+            Ok((offset, v)) => TypeResult::Ok(Type {
                 t: v.into(),
                 offset: offset,
             }),
@@ -56,9 +56,12 @@ pub fn parse_function_section(
 ) -> Result<FunctionResultArray, BinaryError> {
     let reader = FunctionSectionReader::new(data, offset)?;
     let results = reader
-        .into_iter()
+        .into_iter_with_offsets()
         .map(|r| match r {
-            Ok(v) => FunctionResult::Ok(Function { type_idx: v }),
+            Ok((offset, v)) => FunctionResult::Ok(Function {
+                type_idx: v,
+                offset: offset,
+            }),
             Err(err) => FunctionResult::Err(err.into()),
         })
         .collect::<Vec<FunctionResult>>();

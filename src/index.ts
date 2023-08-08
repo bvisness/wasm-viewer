@@ -327,6 +327,7 @@ async function loadModuleFromFile(wasmFile: File) {
       case "Function": {
         headerEl.appendChild(ItemCount(section.functions.length));
         sectionEl.classList.add("section-function");
+        const sectionEnd = section.offset + section.length;
 
         const items: Node[] = [];
         if (module.imported.funcs.length > 0) {
@@ -338,10 +339,21 @@ async function loadModuleFromFile(wasmFile: File) {
           } else {
             const funcIndex = module.imported.funcs.length + i;
             const name = module.names.funcs[funcIndex];
-            items.push(E("div", ["item", "pa2", "flex", "flex-column", "g2"], [
+            items.push(E("div", ["item", "item-function", "relative", "pa2", "flex", "flex-column", "g2"], [
               E("div", ["b"], name ? `Function ${funcIndex}: ${name}` : `Function ${funcIndex}`),
               E("div", [], TypeRef({ module: module, index: func.type_idx })),
+              ScrollPadder(),
             ]));
+
+            const nextOffset = section.functions[i + 1]?.offset ?? sectionEnd;
+            addGoto({
+              kind: "function",
+              depth: 1,
+              offset: func.offset,
+              length: nextOffset - func.offset,
+              indexInSection: i,
+              funcIndex: funcIndex,
+            });
           }
         }
         sectionContents.appendChild(Items(items));
@@ -718,13 +730,19 @@ gotoInput.addEventListener("input", () => {
         case "type": {
           result = E("div", resultClasses, [
             E("span", ["chip", "chip-green"], "type"),
-            module.names.types[gotoEntry.index] ?? `type ${gotoEntry.index}`,
+            module.names.types[gotoEntry.index] ?? `Type ${gotoEntry.index}`,
           ]);
         } break;
         case "import": {
           result = E("div", resultClasses, [
             E("span", ["chip", "chip-orange"], "import"),
             `Import "${gotoEntry.namespace}" "${gotoEntry.name}"`,
+          ]);
+        } break;
+        case "function": {
+          result = E("div", resultClasses, [
+            E("span", ["chip", "chip-gray"], "function header"),
+            module.names.funcs[gotoEntry.funcIndex] ?? `Function ${gotoEntry.funcIndex}`,
           ]);
         } break;
         default:

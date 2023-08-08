@@ -283,6 +283,7 @@ impl From<ParserTagType> for TagType {
 #[wasmtools_struct]
 pub struct Function {
     pub type_idx: u32,
+    pub offset: usize,
 }
 
 /// Different modes of initializing a table.

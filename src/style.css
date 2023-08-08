@@ -136,7 +136,7 @@ body {
   text-decoration-style: dotted
 }
 
-.item-type.goto-current {
+.item.goto-current {
   border-width: 3px;
 }
 
