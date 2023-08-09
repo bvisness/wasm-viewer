@@ -1,11 +1,11 @@
 import { parse } from "./parse";
 import wasmUrl from "../wasm-tools/pkg/wasm_viewer_bg.wasm";
-import wasmInit, { Export, Import, IndirectNamingResultArray, Name } from "../wasm-tools/pkg";
+import wasmInit, { BinaryError, Export, Import, IndirectNamingResultArray, Name } from "../wasm-tools/pkg";
 import { Module, Section, WASM_PAGE_SIZE, bytesToString, funcTypeToString, memoryTypeToString } from "./types";
 import { DataSegmentRef, E, ElementSegmentRef, F, FunctionRef, GlobalRef, ItemCount, Items, KindChip, MemoryRef, N, NameSection, RefTypeRef, Reference, ScrollPadder, TableRef, Tip, Toggle, TypeRef, ValTypeRef, WVNode, WasmError, addToggleEvents } from "./components";
 import { assertUnreachable } from "./util";
 import { activateTab, addTabToPane, newPane, newPaneContainer, newTab } from "./panes";
-import { GotoEntry, addGoto, goto, lookUpGoto as lookUpGotos } from "./goto";
+import { GotoEntry, addGoto, clearGotos, goto, lookUpGoto as lookUpGotos } from "./goto";
 import {
   filePicker,
   doButton,
@@ -85,7 +85,14 @@ async function loadModuleFromFile(wasmFile: File) {
     });
   }
 
-  module = await parse(wasmFile.stream());
+  try {
+    module = await parse(wasmFile.stream());
+  } catch (err) {
+    if (err instanceof BinaryError) {
+      throw new Error(`at offset ${err.offset}: ${err.message}`, { cause: err });
+    }
+    throw err;
+  }
 
   // @ts-expect-error I am not allowed to debug my own code 🤡
   window.currentModule = module;
@@ -93,6 +100,8 @@ async function loadModuleFromFile(wasmFile: File) {
   // TODO: Inspect each section for correct handling of indices.
   // Functions, tables, memories, and globals can all be imported, and therefore can have their
   // indices shifted.
+
+  clearGotos();
 
   sections.innerHTML = "";
   for (const [sectionIndex, section] of module.sections.entries()) {
@@ -108,6 +117,7 @@ async function loadModuleFromFile(wasmFile: File) {
         sectionContents,
       ]),
     ]);
+    sectionEl.setAttribute("data-index", `${sectionIndex}`);
 
     addGoto({
       kind: "section",
@@ -217,13 +227,15 @@ async function loadModuleFromFile(wasmFile: File) {
                 details = funcTypeToString(type.t.func);
               } break;
             }
-            items.push(E("div", ["item", "item-type", "pa2", "flex", "flex-column", "g2", "relative"], [
+            const nextOffset = section.types[i + 1]?.offset ?? sectionEnd;
+            const item = E("div", ["item", "item-type", "pa2", "flex", "flex-column", "g2", "relative"], [
               E("div", ["b"], `Type ${i}`),
               E("div", [], details),
               ScrollPadder(),
-            ]));
+            ]);
+            item.setAttribute("data-index", `${i}`);
+            items.push(item);
 
-            const nextOffset = section.types[i + 1]?.offset ?? sectionEnd;
             addGoto({
               kind: "type",
               depth: 1,
@@ -339,11 +351,13 @@ async function loadModuleFromFile(wasmFile: File) {
           } else {
             const funcIndex = module.imported.funcs.length + i;
             const name = module.names.funcs[funcIndex];
-            items.push(E("div", ["item", "item-function", "relative", "pa2", "flex", "flex-column", "g2"], [
+            const item = E("div", ["item", "item-function", "relative", "pa2", "flex", "flex-column", "g2"], [
               E("div", ["b"], name ? `Function ${funcIndex}: ${name}` : `Function ${funcIndex}`),
               E("div", [], TypeRef({ module: module, index: func.type_idx })),
               ScrollPadder(),
-            ]));
+            ]);
+            item.setAttribute("data-index", `${funcIndex}`);
+            items.push(item);
 
             const nextOffset = section.functions[i + 1]?.offset ?? sectionEnd;
             addGoto({
@@ -351,8 +365,7 @@ async function loadModuleFromFile(wasmFile: File) {
               depth: 1,
               offset: func.offset,
               length: nextOffset - func.offset,
-              indexInSection: i,
-              funcIndex: funcIndex,
+              index: funcIndex,
             });
           }
         }
@@ -361,21 +374,38 @@ async function loadModuleFromFile(wasmFile: File) {
       case "Table": {
         headerEl.appendChild(ItemCount(section.tables.length));
         sectionEl.classList.add("section-table");
+        const sectionEnd = section.offset + section.length;
 
         const items: Node[] = [];
         for (const [i, table] of section.tables.entries()) {
           if (table.is_error) {
             items.push(WasmError(`ERROR (offset ${table.offset}): ${table.message}`));
           } else {
+            const tableIndex = module.imported.tables.length + i;
             // TODO: table names?
+
+            // TODO: Notice of table imports
+
             const initStr = `${table.ty.initial} elements`;
             const maxStr = table.ty.maximum ? `, max ${table.ty.maximum} elements` : ", no max";
-            items.push(E("div", ["item", "pa2", "flex", "flex-column", "g2"], [
+            const item = E("div", ["item", "item-table", "relative", "pa2", "flex", "flex-column", "g2"], [
               E("div", ["b"], `Table ${i}`),
               E("div", [], ["of ", RefTypeRef({ module: module, type: table.ty.element_type })]),
               E("div", [], `${initStr}${maxStr}`),
               // TODO: "initialized by" for active segments
-            ]));
+              ScrollPadder(),
+            ]);
+            item.setAttribute("data-index", `${tableIndex}`);
+            items.push(item);
+
+            const nextOffset = section.tables[i + 1]?.offset ?? sectionEnd;
+            addGoto({
+              kind: "table",
+              depth: 1,
+              offset: table.offset,
+              length: nextOffset - table.offset,
+              index: tableIndex,
+            });
           }
         }
         sectionContents.appendChild(Items(items));
@@ -718,13 +748,14 @@ gotoInput.addEventListener("input", () => {
           const section = module.sections[gotoEntry.index];
           let name: string;
           switch (section.type) {
-            case "DataCount": name = "Data Count"; break;
-            default: name = section.type; break;
+            case "Custom": name = `Custom Section "${section.custom.name}"`; break;
+            case "DataCount": name = "Data Count Section"; break;
+            default: name = `${section.type} Section`; break;
           }
 
           result = E("div", resultClasses, [
             E("span", ["chip", "chip-gray"], "section"),
-            `${name} Section`,
+            name,
           ]);
         } break;
         case "type": {
@@ -742,7 +773,13 @@ gotoInput.addEventListener("input", () => {
         case "function": {
           result = E("div", resultClasses, [
             E("span", ["chip", "chip-gray"], "function header"),
-            module.names.funcs[gotoEntry.funcIndex] ?? `Function ${gotoEntry.funcIndex}`,
+            module.names.funcs[gotoEntry.index] ?? `Function ${gotoEntry.index}`,
+          ]);
+        } break;
+        case "table": {
+          result = E("div", resultClasses, [
+            E("span", ["chip", "chip-green"], "table"),
+            module.names.tables[gotoEntry.index] ?? `Table ${gotoEntry.index}`,
           ]);
         } break;
         default:

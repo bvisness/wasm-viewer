@@ -72,9 +72,9 @@ pub fn parse_function_section(
 pub fn parse_table_section(data: &[u8], offset: usize) -> Result<TableResultArray, BinaryError> {
     let reader = TableSectionReader::new(data, offset)?;
     let results = reader
-        .into_iter()
+        .into_iter_with_offsets()
         .map(|r| match r {
-            Ok(v) => TableResult::Ok(v.into()),
+            Ok((offset, v)) => TableResult::Ok(Table::from_wasm(v, offset)),
             Err(err) => TableResult::Err(err.into()),
         })
         .collect::<Vec<TableResult>>();

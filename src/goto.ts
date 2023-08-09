@@ -12,7 +12,8 @@ export type GotoEntry =
   GotoSection
   | GotoType
   | GotoImport
-  | GotoFunction;
+  | GotoFunction
+  | GotoTable;
 
 export type GotoKind = GotoEntry["kind"];
 
@@ -34,8 +35,12 @@ export interface GotoImport {
 
 export interface GotoFunction {
   kind: "function";
-  indexInSection: number;
-  funcIndex: number;
+  index: number;
+}
+
+export interface GotoTable {
+  kind: "table";
+  index: number;
 }
 
 export type GotoBinary = GotoEntry & {
@@ -56,6 +61,10 @@ const gotos: GotoBinary[] = [];
 
 // @ts-expect-error I am not allowed to debug my own code 🤡
 window.gotos = gotos;
+
+export function clearGotos() {
+  gotos.splice(0);
+}
 
 export function addGoto(entry: GotoBinary) {
   // TODO: dumb airplane code because no docs, sad sorted insert bad time
@@ -83,7 +92,7 @@ export function goto(entry: GotoEntry) {
   const kind = entry.kind;
   switch (kind) {
     case "section": {
-      const sectionEl = sections.querySelector(`.section:nth-child(${entry.index+1})`)!;
+      const sectionEl = sections.querySelector(`.section[data-index="${entry.index}"]`)!;
       sectionEl.classList.add("open", "goto-current");
       sectionEl.scrollIntoView({ behavior: "smooth" });
     } break;
@@ -91,7 +100,7 @@ export function goto(entry: GotoEntry) {
       const sectionEl = sections.querySelector(".section.section-type")!;
       sectionEl.classList.add("open");
 
-      const typeEl = sectionEl.querySelector(`.item-type:nth-child(${entry.index+1})`)!;
+      const typeEl = sectionEl.querySelector(`.item-type[data-index="${entry.index}"]`)!;
       typeEl.classList.add("goto-current");
       typeEl.querySelector(".scroll-padder")!.scrollIntoView({ behavior: "smooth" });
     } break;
@@ -110,9 +119,17 @@ export function goto(entry: GotoEntry) {
       const sectionEl = sections.querySelector(".section.section-function")!;
       sectionEl.classList.add("open");
 
-      const functionEl = sectionEl.querySelector(`.item-function:nth-child(${entry.indexInSection+1})`)!;
+      const functionEl = sectionEl.querySelector(`.item-function[data-index="${entry.index}"]`)!;
       functionEl.classList.add("goto-current");
       functionEl.querySelector(".scroll-padder")!.scrollIntoView({ behavior: "smooth" });
+    } break;
+    case "table": {
+      const sectionEl = sections.querySelector(".section.section-table")!;
+      sectionEl.classList.add("open");
+
+      const tableEl = sectionEl.querySelector(`.item-table[data-index="${entry.index}"]`)!;
+      tableEl.classList.add("goto-current");
+      tableEl.querySelector(".scroll-padder")!.scrollIntoView({ behavior: "smooth" });
     } break;
     default:
       assertUnreachable(kind);

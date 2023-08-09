@@ -313,13 +313,15 @@ pub struct Table {
     pub ty: TableType,
     /// The initialization expression for the table.
     pub init: TableInit,
+    pub offset: usize,
 }
 
-impl From<ParserTable<'_>> for Table {
-    fn from(value: ParserTable) -> Self {
+impl Table {
+    pub fn from_wasm(value: ParserTable, offset: usize) -> Self {
         Table {
             ty: value.ty.into(),
             init: value.init.into(),
+            offset: offset,
         }
     }
 }

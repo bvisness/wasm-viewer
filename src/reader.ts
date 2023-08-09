@@ -1,19 +1,21 @@
 export class WasmReader {
   reader: ReadableStreamDefaultReader<Uint8Array>;
 
-  cursor: number;
+  offset: number; // absolute offset into the wasm buffer
+  chunkCursor: number; // position in current chunk only
   chunk: Uint8Array;
   done: boolean;
 
   constructor(stream: ReadableStream<Uint8Array>) {
     this.reader = stream.getReader();
-    this.cursor = 0;
+    this.offset = 0;
+    this.chunkCursor = 0;
     this.chunk = new Uint8Array([]);
     this.done = false;
   }
 
   async getChunk(): Promise<boolean> {
-    this.cursor = 0;
+    this.chunkCursor = 0;
 
     const { done, value } = await this.reader.read();
     if (done) {
@@ -27,7 +29,7 @@ export class WasmReader {
   }
 
   async getChunkIfDoneWithThisOne(): Promise<boolean> {
-    if (this.cursor >= this.chunk.length) {
+    if (this.chunkCursor >= this.chunk.length) {
       return this.getChunk();
     } else {
       return false;
@@ -35,7 +37,7 @@ export class WasmReader {
   }
 
   async mustHaveBytes(msg: string) {
-    if (this.cursor >= this.chunk.length) {
+    if (this.chunkCursor >= this.chunk.length) {
       const done = await this.getChunk();
       if (done) {
         throw new Error(`got end of file: ${msg}`);
@@ -45,15 +47,17 @@ export class WasmReader {
 
   async getByte(thing: string): Promise<number> {
     await this.mustHaveBytes(`expecting ${thing}`);
-    const result = this.chunk[this.cursor];
-    this.cursor++;
+    const result = this.chunk[this.chunkCursor];
+    this.offset++;
+    this.chunkCursor++;
     return result;
   }
 
   async advanceBy(n: number): Promise<void> {
     while (true) {
-      const advanceThisChunk = Math.min(this.chunk.length - this.cursor, n);
-      this.cursor += advanceThisChunk;
+      const advanceThisChunk = Math.min(this.chunk.length - this.chunkCursor, n);
+      this.offset += advanceThisChunk;
+      this.chunkCursor += advanceThisChunk;
       n -= advanceThisChunk;
       if (n > 0) {
         // There are still bytes to advance by. Get another chunk.
@@ -61,7 +65,7 @@ export class WasmReader {
         if (done) {
           throw new Error(`tried to advance by ${n} bytes, but ran out of data`);
         }
-        this.cursor = 0;
+        this.chunkCursor = 0;
         continue;
       }
       break;
@@ -72,10 +76,11 @@ export class WasmReader {
     let i = 0;
     const res = new Uint8Array(n);
     while (true) {
-      const advanceThisChunk = Math.min(this.chunk.length - this.cursor, n);
-      const sourceBytes = this.chunk.subarray(this.cursor, this.cursor + advanceThisChunk);
+      const advanceThisChunk = Math.min(this.chunk.length - this.chunkCursor, n);
+      const sourceBytes = this.chunk.subarray(this.chunkCursor, this.chunkCursor + advanceThisChunk);
       res.set(sourceBytes, i);
-      this.cursor += advanceThisChunk;
+      this.offset += advanceThisChunk;
+      this.chunkCursor += advanceThisChunk;
       i += advanceThisChunk;
       n -= advanceThisChunk;
       if (n > 0) {
@@ -84,7 +89,7 @@ export class WasmReader {
         if (done) {
           throw new Error(`tried to advance by ${n} bytes, but ran out of data`);
         }
-        this.cursor = 0;
+        this.chunkCursor = 0;
         continue;
       }
       break;
