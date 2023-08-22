@@ -105,6 +105,8 @@ async function loadModuleFromFile(wasmFile: File) {
 
   sections.innerHTML = "";
   for (const [sectionIndex, section] of module.sections.entries()) {
+    const sectionEnd = section.offset + section.length;
+
     const sectionContents = E("div", ["toggle-contents"], []);
 
     const headerEl = E("div", ["toggle-title", "ma0", "mt2", "flex", "g2"], [
@@ -214,7 +216,6 @@ async function loadModuleFromFile(wasmFile: File) {
       case "Type": {
         headerEl.appendChild(ItemCount(section.types.length));
         sectionEl.classList.add("section-type");
-        const sectionEnd = section.offset + section.length;
 
         const items: Node[] = [];
         for (const [i, type] of section.types.entries()) {
@@ -250,7 +251,6 @@ async function loadModuleFromFile(wasmFile: File) {
       case "Import": {
         headerEl.appendChild(ItemCount(section.imports.imports.length));
         sectionEl.classList.add("section-import");
-        const sectionEnd = section.offset + section.length;
 
         const items: Node[] = [];
 
@@ -339,7 +339,6 @@ async function loadModuleFromFile(wasmFile: File) {
       case "Function": {
         headerEl.appendChild(ItemCount(section.functions.length));
         sectionEl.classList.add("section-function");
-        const sectionEnd = section.offset + section.length;
 
         const items: Node[] = [];
         if (module.imported.funcs.length > 0) {
@@ -374,7 +373,6 @@ async function loadModuleFromFile(wasmFile: File) {
       case "Table": {
         headerEl.appendChild(ItemCount(section.tables.length));
         sectionEl.classList.add("section-table");
-        const sectionEnd = section.offset + section.length;
 
         const items: Node[] = [];
         for (const [i, table] of section.tables.entries()) {
@@ -413,7 +411,6 @@ async function loadModuleFromFile(wasmFile: File) {
       case "Memory": {
         headerEl.appendChild(ItemCount(section.mems.length));
         sectionEl.classList.add("section-memory");
-        const sectionEnd = section.offset + section.length;
 
         const items: Node[] = [];
         for (const [i, mem] of section.mems.entries()) {
@@ -433,28 +430,28 @@ async function loadModuleFromFile(wasmFile: File) {
             ]);
             memEl.setAttribute("data-index", `${memIndex}`);
 
-            if (mem.initial === mem.maximum) {
+            if (mem.t.initial === mem.t.maximum) {
               details.appendChild(Tip({
-                text: `exactly ${mem.initial} pages`,
-                tooltip: `${bytesToString(mem.initial * BigInt(WASM_PAGE_SIZE))} (initial = max)`,
+                text: `exactly ${mem.t.initial} pages`,
+                tooltip: `${bytesToString(mem.t.initial * BigInt(WASM_PAGE_SIZE))} (initial = max)`,
               }));
             } else {
               details.appendChild(Tip({
-                text: `${mem.initial} pages`,
-                tooltip: bytesToString(mem.initial * BigInt(WASM_PAGE_SIZE)),
+                text: `${mem.t.initial} pages`,
+                tooltip: bytesToString(mem.t.initial * BigInt(WASM_PAGE_SIZE)),
               }));
-              if (mem.maximum) {
+              if (mem.t.maximum) {
                 details.appendChild(N(", max "));
                 details.appendChild(Tip({
-                  text: `${mem.maximum} pages`,
-                  tooltip: bytesToString(mem.maximum * BigInt(WASM_PAGE_SIZE)),
+                  text: `${mem.t.maximum} pages`,
+                  tooltip: bytesToString(mem.t.maximum * BigInt(WASM_PAGE_SIZE)),
                 }));
               } else {
                 details.appendChild(N(", no max"));
               }
             }
-            details.appendChild(N(mem.memory64 ? ", 64-bit" : ", 32-bit"));
-            details.appendChild(N(mem.shared ? ", shared" : ", not shared"));
+            details.appendChild(N(mem.t.memory64 ? ", 64-bit" : ", 32-bit"));
+            details.appendChild(N(mem.t.shared ? ", shared" : ", not shared"));
             // TODO: list relevant data segments (WARNING! there can be a lot of them!)
             items.push(memEl);
 
@@ -479,15 +476,29 @@ async function loadModuleFromFile(wasmFile: File) {
           if (global.is_error) {
             items.push(WasmError(`ERROR (offset ${global.offset}): ${global.message}`));
           } else {
+            const globalIndex = module.imported.globals.length + i;
             // TODO: global names
             // TODO: global init expr
-            items.push(E("div", ["item", "pa2", "flex", "flex-column", "g2"], [
+
+            const item = E("div", ["item", "item-global", "relative", "pa2", "flex", "flex-column", "g2"], [
               E("div", ["b"], `Global ${i}`),
               E("div", [], [
                 global.ty.mutable ? "mutable " : "immutable ",
                 ValTypeRef({ module: module, type: global.ty.content_type }),
               ]),
-            ]));
+              ScrollPadder(),
+            ]);
+            item.setAttribute("data-index", `${globalIndex}`);
+            items.push(item);
+
+            const nextOffset = section.globals[i + 1]?.offset ?? sectionEnd;
+            addGoto({
+              kind: "global",
+              depth: 1,
+              offset: global.offset,
+              length: nextOffset - global.offset,
+              index: globalIndex,
+            });
           }
         }
         sectionContents.appendChild(Items(items));
@@ -771,38 +782,44 @@ gotoInput.addEventListener("input", () => {
           }
 
           result = E("div", resultClasses, [
-            E("span", ["chip", "chip-gray"], "section"),
+            KindChip({ kind: "section" }),
             name,
           ]);
         } break;
         case "type": {
           result = E("div", resultClasses, [
-            E("span", ["chip", "chip-green"], "type"),
+            KindChip({ kind: "type" }),
             module.names.types[gotoEntry.index] ?? `Type ${gotoEntry.index}`,
           ]);
         } break;
         case "import": {
           result = E("div", resultClasses, [
-            E("span", ["chip", "chip-orange"], "import"),
+            KindChip({ kind: "import" }),
             `Import "${gotoEntry.namespace}" "${gotoEntry.name}"`,
           ]);
         } break;
         case "function": {
           result = E("div", resultClasses, [
-            E("span", ["chip", "chip-gray"], "function header"),
+            KindChip({ kind: "function header" }),
             module.names.funcs[gotoEntry.index] ?? `Function ${gotoEntry.index}`,
           ]);
         } break;
         case "table": {
           result = E("div", resultClasses, [
-            E("span", ["chip", "chip-green"], "table"),
+            KindChip({ kind: "table" }),
             module.names.tables[gotoEntry.index] ?? `Table ${gotoEntry.index}`,
           ]);
         } break;
         case "memory": {
           result = E("div", resultClasses, [
-            E("span", ["chip", "chip-red"], "memory"),
+            KindChip({ kind: "memory" }),
             module.names.memories[gotoEntry.index] ?? `Memory ${gotoEntry.index}`,
+          ]);
+        } break;
+        case "global": {
+          result = E("div", resultClasses, [
+            KindChip({ kind: "global" }),
+            module.names.globals[gotoEntry.index] ?? `Global ${gotoEntry.index}`,
           ]);
         } break;
         default:

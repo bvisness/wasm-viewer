@@ -196,7 +196,7 @@ impl From<ParserTypeRef> for TypeRef {
             ParserTypeRef::Func(f) => TypeRef::new_func(f),
             ParserTypeRef::Table(t) => TypeRef::new_table(t.into()),
             ParserTypeRef::Global(g) => TypeRef::new_global(g.into()),
-            ParserTypeRef::Memory(m) => TypeRef::new_memory(MemoryType::from_wasm(m, 0)),
+            ParserTypeRef::Memory(m) => TypeRef::new_memory(m.into()),
             ParserTypeRef::Tag(t) => TypeRef::new_tag(t.into()),
         }
     }
@@ -326,6 +326,12 @@ impl Table {
     }
 }
 
+#[wasmtools_struct]
+pub struct Memory {
+    pub t: MemoryType,
+    pub offset: usize,
+}
+
 /// Represents a memory's type.
 #[wasmtools_struct]
 pub struct MemoryType {
@@ -354,18 +360,15 @@ pub struct MemoryType {
     /// be at most `u32::MAX` for valid types. This field is always present for
     /// valid wasm memories when `shared` is `true`.
     pub maximum: Option<u64>,
-
-    pub offset: usize,
 }
 
-impl MemoryType {
-    pub fn from_wasm(value: ParserMemoryType, offset: usize) -> Self {
+impl From<ParserMemoryType> for MemoryType {
+    fn from(value: ParserMemoryType) -> Self {
         MemoryType {
             memory64: value.memory64,
             shared: value.shared,
             initial: value.initial,
             maximum: value.maximum,
-            offset: offset,
         }
     }
 }
@@ -411,13 +414,15 @@ pub struct Global {
     pub ty: GlobalType,
     /// The global's initialization expression.
     pub init_expr: ConstExpr,
+    pub offset: usize,
 }
 
-impl From<ParserGlobal<'_>> for Global {
-    fn from(value: ParserGlobal) -> Self {
+impl Global {
+    pub fn from_wasm(value: ParserGlobal, offset: usize) -> Self {
         Global {
             ty: value.ty.into(),
             init_expr: value.init_expr.into(),
+            offset: offset,
         }
     }
 }

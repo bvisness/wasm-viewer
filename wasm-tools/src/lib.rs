@@ -85,15 +85,18 @@ pub fn parse_table_section(data: &[u8], offset: usize) -> Result<TableResultArra
 pub fn parse_memory_section(
     data: &[u8],
     offset: usize,
-) -> Result<MemoryTypeResultArray, BinaryError> {
+) -> Result<MemoryResultArray, BinaryError> {
     let reader = MemorySectionReader::new(data, offset)?;
     let results = reader
         .into_iter_with_offsets()
         .map(|r| match r {
-            Ok((offset, v)) => MemoryTypeResult::Ok(MemoryType::from_wasm(v, offset)),
-            Err(err) => MemoryTypeResult::Err(err.into()),
+            Ok((offset, v)) => MemoryResult::Ok(Memory {
+                t: v.into(),
+                offset: offset,
+            }),
+            Err(err) => MemoryResult::Err(err.into()),
         })
-        .collect::<Vec<MemoryTypeResult>>();
+        .collect::<Vec<MemoryResult>>();
     Ok(results.into())
 }
 
@@ -101,9 +104,9 @@ pub fn parse_memory_section(
 pub fn parse_global_section(data: &[u8], offset: usize) -> Result<GlobalResultArray, BinaryError> {
     let reader = GlobalSectionReader::new(data, offset)?;
     let results = reader
-        .into_iter()
+        .into_iter_with_offsets()
         .map(|r| match r {
-            Ok(v) => GlobalResult::Ok(v.into()),
+            Ok((offset, v)) => GlobalResult::Ok(Global::from_wasm(v, offset)),
             Err(err) => GlobalResult::Err(err.into()),
         })
         .collect::<Vec<GlobalResult>>();

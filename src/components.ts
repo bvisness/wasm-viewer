@@ -97,12 +97,26 @@ export function Toggle(props: {
 export function KindChip(props: { kind: string }) {
   let colorClass: string;
   switch (props.kind) {
+    case "type": {
+      colorClass = "chip-green";
+    } break;
+    case "import": {
+      colorClass = "chip-orange";
+    } break;
+    case "table": {
+      colorClass = "chip-green";
+    } break;
     case "memory": {
       colorClass = "chip-red";
     } break;
-    case "func":
-    default: {
+    case "global": {
+      colorClass = "chip-red";
+    } break;
+    case "func": {
       colorClass = "chip-blue";
+    } break;
+    default: {
+      colorClass = "chip-gray";
     } break;
   }
   return E("span", ["chip", colorClass], props.kind);
