@@ -413,18 +413,26 @@ async function loadModuleFromFile(wasmFile: File) {
       case "Memory": {
         headerEl.appendChild(ItemCount(section.mems.length));
         sectionEl.classList.add("section-memory");
+        const sectionEnd = section.offset + section.length;
 
         const items: Node[] = [];
         for (const [i, mem] of section.mems.entries()) {
           if (mem.is_error) {
             items.push(WasmError(`ERROR (offset ${mem.offset}): ${mem.message}`));
           } else {
+            const memIndex = module.imported.memories.length + i;
             // TODO: memory names?
+
+            // TODO: notice of memory imports
+
             const details = E("div", []);
-            const memEl = E("div", ["item", "pa2", "flex", "flex-column", "g2"], [
+            const memEl = E("div", ["item", "item-memory", "relative", "pa2", "flex", "flex-column", "g2"], [
               E("div", ["b"], `Memory ${i}`),
               details,
+              ScrollPadder(),
             ]);
+            memEl.setAttribute("data-index", `${memIndex}`);
+
             if (mem.initial === mem.maximum) {
               details.appendChild(Tip({
                 text: `exactly ${mem.initial} pages`,
@@ -449,6 +457,15 @@ async function loadModuleFromFile(wasmFile: File) {
             details.appendChild(N(mem.shared ? ", shared" : ", not shared"));
             // TODO: list relevant data segments (WARNING! there can be a lot of them!)
             items.push(memEl);
+
+            const nextOffset = section.mems[i + 1]?.offset ?? sectionEnd;
+            addGoto({
+              kind: "memory",
+              depth: 1,
+              offset: mem.offset,
+              length: nextOffset - mem.offset,
+              index: memIndex,
+            });
           }
         }
         sectionContents.appendChild(Items(items));
@@ -780,6 +797,12 @@ gotoInput.addEventListener("input", () => {
           result = E("div", resultClasses, [
             E("span", ["chip", "chip-green"], "table"),
             module.names.tables[gotoEntry.index] ?? `Table ${gotoEntry.index}`,
+          ]);
+        } break;
+        case "memory": {
+          result = E("div", resultClasses, [
+            E("span", ["chip", "chip-red"], "memory"),
+            module.names.memories[gotoEntry.index] ?? `Memory ${gotoEntry.index}`,
           ]);
         } break;
         default:

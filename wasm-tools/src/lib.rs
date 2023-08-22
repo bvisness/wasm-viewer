@@ -88,9 +88,9 @@ pub fn parse_memory_section(
 ) -> Result<MemoryTypeResultArray, BinaryError> {
     let reader = MemorySectionReader::new(data, offset)?;
     let results = reader
-        .into_iter()
+        .into_iter_with_offsets()
         .map(|r| match r {
-            Ok(v) => MemoryTypeResult::Ok(v.into()),
+            Ok((offset, v)) => MemoryTypeResult::Ok(MemoryType::from_wasm(v, offset)),
             Err(err) => MemoryTypeResult::Err(err.into()),
         })
         .collect::<Vec<MemoryTypeResult>>();

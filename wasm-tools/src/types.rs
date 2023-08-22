@@ -196,7 +196,7 @@ impl From<ParserTypeRef> for TypeRef {
             ParserTypeRef::Func(f) => TypeRef::new_func(f),
             ParserTypeRef::Table(t) => TypeRef::new_table(t.into()),
             ParserTypeRef::Global(g) => TypeRef::new_global(g.into()),
-            ParserTypeRef::Memory(m) => TypeRef::new_memory(m.into()),
+            ParserTypeRef::Memory(m) => TypeRef::new_memory(MemoryType::from_wasm(m, 0)),
             ParserTypeRef::Tag(t) => TypeRef::new_tag(t.into()),
         }
     }
@@ -354,15 +354,18 @@ pub struct MemoryType {
     /// be at most `u32::MAX` for valid types. This field is always present for
     /// valid wasm memories when `shared` is `true`.
     pub maximum: Option<u64>,
+
+    pub offset: usize,
 }
 
-impl From<ParserMemoryType> for MemoryType {
-    fn from(value: ParserMemoryType) -> Self {
+impl MemoryType {
+    pub fn from_wasm(value: ParserMemoryType, offset: usize) -> Self {
         MemoryType {
             memory64: value.memory64,
             shared: value.shared,
             initial: value.initial,
             maximum: value.maximum,
+            offset: offset,
         }
     }
 }
