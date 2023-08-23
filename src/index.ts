@@ -629,16 +629,26 @@ async function loadModuleFromFile(wasmFile: File) {
             const funcIndex = module.imported.funcs.length + i;
             const name = module.names.funcs[funcIndex];
             const funcTypeIndex = module.functionType(funcIndex);
-            const item = E("div", ["item", "pa2", "flex", "flex-column", "g1"], [
+            const item = E("div", ["item", "item-code", "relative", "pa2", "flex", "flex-column", "g1"], [
               E("b", [], name ? `Function ${funcIndex}: ${name}` : `Function ${funcIndex}`),
               E("div", ["f--small"], [
                 funcTypeIndex !== undefined
                   ? TypeRef({ module: module, index: funcTypeIndex })
                   : Reference({ text: "unknown type" }),
               ]),
+              ScrollPadder(),
             ]);
+            item.setAttribute("data-index", `${funcIndex}`);
             item.addEventListener("click", () => openFunction(funcIndex));
             items.push(item);
+
+            addGoto({
+              kind: "code",
+              depth: 1,
+              offset: func.range.start,
+              length: func.range.end - func.range.start, // TODO: Verify that this isn't off by one
+              index: funcIndex,
+            });
           }
           sectionContents.appendChild(Items(items));
         }
@@ -820,6 +830,12 @@ gotoInput.addEventListener("input", () => {
           result = E("div", resultClasses, [
             KindChip({ kind: "global" }),
             module.names.globals[gotoEntry.index] ?? `Global ${gotoEntry.index}`,
+          ]);
+        } break;
+        case "code": {
+          result = E("div", resultClasses, [
+            KindChip({ kind: "func" }),
+            module.names.funcs[gotoEntry.index] ?? `Function ${gotoEntry.index}`,
           ]);
         } break;
         default:

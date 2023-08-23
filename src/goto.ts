@@ -15,7 +15,8 @@ export type GotoEntry =
   | GotoFunction
   | GotoTable
   | GotoMemory
-  | GotoGlobal;
+  | GotoGlobal
+  | GotoCode;
 
 export type GotoKind = GotoEntry["kind"];
 
@@ -52,6 +53,11 @@ export interface GotoMemory {
 
 export interface GotoGlobal {
   kind: "global";
+  index: number;
+}
+
+export interface GotoCode {
+  kind: "code";
   index: number;
 }
 
@@ -158,6 +164,14 @@ export function goto(entry: GotoEntry) {
       const globalEl = sectionEl.querySelector(`.item-global[data-index="${entry.index}"]`)!;
       globalEl.classList.add("goto-current");
       globalEl.querySelector(".scroll-padder")!.scrollIntoView({ behavior: "smooth" });
+    } break;
+    case "code": {
+      const sectionEl = sections.querySelector(".section.section-code")!;
+      sectionEl.classList.add("open");
+
+      const codeEl = sectionEl.querySelector(`.item-code[data-index="${entry.index}"]`)!;
+      codeEl.classList.add("goto-current");
+      codeEl.querySelector(".scroll-padder")!.scrollIntoView({ behavior: "smooth" });
     } break;
     default:
       assertUnreachable(kind);
